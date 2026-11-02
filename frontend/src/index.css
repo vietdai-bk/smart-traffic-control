@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ---------- Light Theme (Executive Day) ---------- */
+  :root {
+    color-scheme: light;
+    --c-carbon: 245 247 251;
+    --c-surface: 255 255 255;
+    --c-panel: 237 242 249;
+    --c-line: 220 228 238;
+    --c-ink: 15 23 42;
+    --c-ink-dim: 51 65 85;
+    --c-ink-mute: 100 116 139;
+    --c-go: 5 150 105;
+    --c-go-ink: 4 120 87;
+    --c-warn: 217 119 6;
+    --c-warn-ink: 180 83 9;
+    --c-stop: 220 38 38;
+    --c-stop-ink: 185 28 28;
+    --c-auto: 37 99 235;
+    --c-auto-ink: 29 78 216;
+    --c-manual: 147 51 234;
+    --c-manual-ink: 126 34 206;
+    --grid-line: rgba(100, 116, 139, 0.065);
+    --shadow-panel: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    --shadow-pop: 0 16px 36px -4px rgba(15, 23, 42, 0.16);
+
+    /* Digital twin SVG colors (Light) */
+    --twin-block: #e2e8f0;
+    --twin-building: #edf2f7;
+    --twin-building-line: #cbd5e1;
+    --twin-road: #ffffff;
+    --twin-road-edge: #94a3b8;
+    --twin-junction: #f8fafc;
+    --twin-road-text: #475569;
+  }
+
+  /* ---------- Dark Theme (Ops Command Center) ---------- */
+  [data-theme="dark"],
+  .dark {
+    color-scheme: dark;
+    --c-carbon: 10 14 23;
+    --c-surface: 16 23 37;
+    --c-panel: 23 32 50;
+    --c-line: 32 44 67;
+    --c-ink: 241 245 249;
+    --c-ink-dim: 148 163 184;
+    --c-ink-mute: 100 116 139;
+    --c-go: 16 185 129;
+    --c-go-ink: 52 211 153;
+    --c-warn: 245 158 11;
+    --c-warn-ink: 251 191 36;
+    --c-stop: 239 68 68;
+    --c-stop-ink: 248 113 113;
+    --c-auto: 59 130 246;
+    --c-auto-ink: 96 165 250;
+    --c-manual: 168 85 247;
+    --c-manual-ink: 192 132 252;
+    --grid-line: rgba(255, 255, 255, 0.035);
+    --shadow-panel: 0 4px 14px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+    --shadow-pop: 0 24px 48px -12px rgba(0, 0, 0, 0.75);
+
+    /* Digital twin SVG colors (Dark) */
+    --twin-block: #0d1322;
+    --twin-building: #141c2e;
+    --twin-building-line: #1e293b;
+    --twin-road: #162032;
+    --twin-road-edge: #2e3e58;
+    --twin-junction: #121a2a;
+    --twin-road-text: #94a3b8;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-carbon font-sans text-ink antialiased transition-colors duration-200;
+    font-feature-settings: "cv11", "ss01", "ss02";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgb(var(--c-auto) / 0.3);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-auto));
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--c-line)) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgb(var(--c-line));
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--c-ink-mute));
+  }
+
+  input[type="number"]::-webkit-inner-spin-button {
+    opacity: 0.3;
+  }
+}
+
+@layer components {
+  /* Số liệu đo lường thời gian thực: luôn monospace + tabular-nums để số đếm mượt không giật khung */
+  .num {
+    @apply font-mono;
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-feature-settings: "tnum", "zero";
+    letter-spacing: -0.02em;
+  }
+
+  .label {
+    @apply text-2xs font-semibold uppercase tracking-wider text-ink-mute;
+  }
+
+  .grid-bg {
+    background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Glassmorphism panel subtle style */
+  .glass-panel {
+    background-color: rgb(var(--c-surface) / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-plain {
+    background: #fff !important;
+    border-color: #ccc !important;
+    color: #111 !important;
+  }
+}

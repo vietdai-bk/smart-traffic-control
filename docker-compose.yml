@@ -1,0 +1,34 @@
+services:
+  backend:
+    build: ./backend
+    container_name: stcs-backend
+    environment:
+      STCS_PORT: "8010"
+      STCS_JWT_SECRET: "${STCS_JWT_SECRET:-change-this-secret-in-production}"
+      STCS_CORS_ORIGINS: "http://localhost:8080"
+      STCS_DATABASE_URL: "sqlite:////data/stcs.db"
+      # LLM Groq — đặt trong file .env ở thư mục gốc (docker compose tự đọc)
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+      STCS_LLM_MODEL: "${STCS_LLM_MODEL:-llama-3.3-70b-versatile}"
+      STCS_LLM_MODE: "${STCS_LLM_MODE:-ADVISORY}"
+    volumes:
+      - stcs-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8010/api/system/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: stcs-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  stcs-data:

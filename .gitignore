@@ -1,0 +1,60 @@
+# ===================== Bí mật & cấu hình cục bộ =====================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ===================== Python / Backend =====================
+backend/.venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# CSDL SQLite & dữ liệu sinh ra khi chạy (seed lại tự động)
+backend/data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Trọng số mô hình & video thử nghiệm (tải riêng, không commit)
+*.pt
+*.onnx
+*.engine
+*.mp4
+*.avi
+*.mkv
+runs/
+
+# ===================== Node / Frontend =====================
+frontend/node_modules/
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===================== Hệ điều hành & IDE =====================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# ===================== Khác =====================
+*.log
+*.zip
+~$*.docx
+.claude/

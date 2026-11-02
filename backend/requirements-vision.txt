@@ -1,0 +1,4 @@
+# Tuỳ chọn: bật nguồn camera thực (RTSP/HTTP/file) và mô hình YOLO thật.
+# pip install -r requirements-vision.txt
+opencv-python-headless>=4.8
+ultralytics>=8.1
