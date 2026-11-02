@@ -22,7 +22,7 @@ from app.core.deps import CurrentUser
 from app.core.events import bus
 from app.core.rbac import ROLE_LABELS, Perm, Role
 from app.db.session import session_scope
-from app.llm.client import LLMError, chat
+from app.llm.client import LLMError, cap, chat, chat_stream
 from app.llm.supervisor import STRATEGIES, decision_out, supervisor
 from app.models.alert import Alert, DeviceIncident
 from app.models.llm import LlmDecision
@@ -302,10 +302,14 @@ def _system(user: CurrentUser, intersection_id: int | None) -> str:
     can_act = any(user.can(p) for p in (Perm.SIGNAL_CONTROL, Perm.SIGNAL_MODE, Perm.LLM_SUPERVISE))
     return (
         "Bạn là trợ lý vận hành của hệ thống điều khiển giao thông STCS (nút giao có camera AI, đèn thích ứng Webster, "
-        "LLM Supervisor và bộ khoá an toàn). Trả lời bằng tiếng Việt, ngắn gọn, có số liệu cụ thể, dùng markdown đơn giản.\n"
+        "LLM Supervisor và bộ khoá an toàn). Trả lời bằng tiếng Việt, ngắn gọn, có số liệu cụ thể, dùng markdown đơn giản (tiêu đề, gạch đầu dòng, bảng, **đậm**); KHÔNG dùng LaTeX — viết công thức dạng chữ thường như c² = a² + b².\n"
         f"Thời gian: {datetime.now().strftime('%H:%M %d/%m/%Y')}. Người dùng: {user.full_name} — {role_label}.\n"
         f"Các nút giao: {lst}. Nút đang chọn trên giao diện: {sel or 'chưa chọn'}.\n"
-        "LUÔN gọi tool để lấy số liệu, không bịa số. "
+        + ("Ngoài nghiệp vụ giao thông, bạn được phép trả lời MỌI câu hỏi ngoài lề của người dùng (kiến thức chung, "
+           "học tập, lập trình, trò chuyện…) một cách đầy đủ và hữu ích như một trợ lý đa năng; với các câu đó không cần gọi tool. "
+           if settings.assistant_open_topic else
+           "Chỉ hỗ trợ các chủ đề liên quan giao thông và hệ thống STCS; câu hỏi ngoài lề thì lịch sự từ chối và gợi ý hỏi về giao thông. ")
+        + "Với số liệu giao thông: LUÔN gọi tool để lấy số liệu, không bịa số. "
         + ("Khi người dùng muốn thay đổi điều khiển, gọi propose_action — lệnh chỉ chạy sau khi người dùng bấm Xác nhận; "
            "hãy nói rõ điều đó. Không bao giờ khẳng định lệnh đã được thực thi. "
            if can_act else "Người dùng này KHÔNG có quyền điều khiển đèn; nếu họ yêu cầu, giải thích lịch sự. ")
@@ -314,10 +318,7 @@ def _system(user: CurrentUser, intersection_id: int | None) -> str:
 
 
 async def run_chat(user: CurrentUser, history: list[dict], intersection_id: int | None) -> dict:
-    msgs: list[dict] = [{"role": "system", "content": _system(user, intersection_id)}]
-    for m in history[-12:]:
-        if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str):
-            msgs.append({"role": m["role"], "content": m["content"][:4000]})
+    msgs = _history(user, history, intersection_id)
     tools = tools_for(user)
     allowed = {t["function"]["name"] for t in tools}
     trace: list[dict] = []
@@ -333,26 +334,79 @@ async def run_chat(user: CurrentUser, history: list[dict], intersection_id: int 
                     "latency_ms": round(latency)}
         msgs.append({"role": "assistant", "content": reply.content or "", "tool_calls": reply.tool_calls})
         for tc in reply.tool_calls:
-            name = tc.get("function", {}).get("name", "")
-            try:
-                args = json.loads(tc.get("function", {}).get("arguments") or "{}")
-            except json.JSONDecodeError:
-                args = {}
-            try:
-                if name not in allowed:
-                    raise PermissionError(f"Tool {name} không được phép với vai trò {user.role}")
-                result = TOOLS[name][1](user, **args)
-                ok = True
-                if name == "propose_action":
-                    actions.append(pending_out(_pending[result["đề_xuất_id"]]))
-            except TypeError as exc:
-                result, ok = {"lỗi": f"Tham số không hợp lệ: {exc}"}, False
-            except (ValueError, PermissionError, KeyError) as exc:
-                result, ok = {"lỗi": str(exc)}, False
+            name, args, result, ok, action = _exec_tool(user, allowed, tc)
+            if action:
+                actions.append(action)
             trace.append({"tool": name, "args": args, "ok": ok})
             msgs.append({"role": "tool", "tool_call_id": tc.get("id"),
-                         "content": json.dumps(result, ensure_ascii=False, default=str)[:6000]})
+                         "content": cap(json.dumps(result, ensure_ascii=False, default=str), 6000)})
     raise LLMError("Trợ lý gọi tool quá nhiều vòng — hãy hỏi cụ thể hơn")
+
+
+def _exec_tool(user: CurrentUser, allowed: set[str], tc: dict) -> tuple[str, dict, Any, bool, dict | None]:
+    name = tc.get("function", {}).get("name", "")
+    try:
+        args = json.loads(tc.get("function", {}).get("arguments") or "{}")
+    except json.JSONDecodeError:
+        args = {}
+    action = None
+    try:
+        if name not in allowed:
+            raise PermissionError(f"Tool {name} không được phép với vai trò {user.role}")
+        result = TOOLS[name][1](user, **args)
+        ok = True
+        if name == "propose_action":
+            action = pending_out(_pending[result["đề_xuất_id"]])
+    except TypeError as exc:
+        result, ok = {"lỗi": f"Tham số không hợp lệ: {exc}"}, False
+    except (ValueError, PermissionError, KeyError) as exc:
+        result, ok = {"lỗi": str(exc)}, False
+    return name, args, result, ok, action
+
+
+def _history(user: CurrentUser, history: list[dict], intersection_id: int | None) -> list[dict]:
+    msgs: list[dict] = [{"role": "system", "content": _system(user, intersection_id)}]
+    for m in history[-12:]:
+        if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str):
+            msgs.append({"role": m["role"], "content": cap(m["content"], 4000)})
+    return msgs
+
+
+async def run_chat_stream(user: CurrentUser, history: list[dict], intersection_id: int | None):
+    """Phiên bản streaming của run_chat: sinh sự kiện delta (từng mẩu chữ), tool, action, done, error."""
+    msgs = _history(user, history, intersection_id)
+    tools = tools_for(user)
+    allowed = {t["function"]["name"] for t in tools}
+    latency = 0.0
+    try:
+        for _ in range(MAX_ROUNDS):
+            calls: list[dict] = []
+            content = ""
+            meta: dict = {}
+            async for kind, data in chat_stream(msgs, tools=tools, temperature=0.3, timeout_s=60):
+                if kind == "delta":
+                    yield {"type": "delta", "text": data}
+                elif kind == "tool_calls":
+                    calls = data
+                else:
+                    meta = data
+                    content = data["content"]
+            latency += meta.get("latency_ms", 0.0)
+            if not calls:
+                yield {"type": "done", "model": meta.get("model", settings.llm_model), "latency_ms": round(latency)}
+                return
+            msgs.append({"role": "assistant", "content": content, "tool_calls": calls})
+            for tc in calls:
+                yield {"type": "tool_start", "tool": tc["function"]["name"]}
+                name, args, result, ok, action = _exec_tool(user, allowed, tc)
+                yield {"type": "tool", "tool": name, "args": args, "ok": ok}
+                if action:
+                    yield {"type": "action", "action": action}
+                msgs.append({"role": "tool", "tool_call_id": tc.get("id"),
+                             "content": cap(json.dumps(result, ensure_ascii=False, default=str), 6000)})
+        yield {"type": "error", "message": "Trợ lý gọi tool quá nhiều vòng — hãy hỏi cụ thể hơn"}
+    except LLMError as exc:
+        yield {"type": "error", "message": str(exc)}
 
 
 # ---------------------------------------------------------------------------------------------- report
@@ -392,9 +446,7 @@ def _report_data(intersection_id: int, hours: float) -> dict:
     }
 
 
-async def make_report(intersection_id: int, hours: float, user: CurrentUser) -> dict:
-    hours = min(max(float(hours), 1), 24 * 31)
-    data = _report_data(intersection_id, hours)
+def _report_messages(data: dict) -> list[dict]:
     prompt = (
         "Viết BÁO CÁO TÌNH HÌNH GIAO THÔNG bằng tiếng Việt, định dạng markdown, từ số liệu JSON dưới đây. Cấu trúc:\n"
         "# tiêu đề (tên nút giao + khoảng thời gian)\n## 1. Tóm tắt (3–4 gạch đầu dòng quan trọng nhất)\n"
@@ -404,8 +456,35 @@ async def make_report(intersection_id: int, hours: float, user: CurrentUser) -> 
         "Chỉ dùng số liệu được cung cấp; mục nào không có dữ liệu thì ghi 'Chưa có dữ liệu'.\n\n"
         + json.dumps(data, ensure_ascii=False, default=str)
     )
-    reply = await chat([{"role": "system", "content": "Bạn là chuyên viên phân tích giao thông đô thị."},
-                        {"role": "user", "content": prompt}], max_tokens=2000, temperature=0.3, timeout_s=45)
+    return [{"role": "system", "content": "Bạn là chuyên viên phân tích giao thông đô thị. Không dùng LaTeX."},
+            {"role": "user", "content": prompt}]
+
+
+async def make_report_stream(intersection_id: int, hours: float, user: CurrentUser):
+    hours = min(max(float(hours), 1), 24 * 31)
+    try:
+        data = _report_data(intersection_id, hours)
+    except ValueError as exc:
+        yield {"type": "error", "message": str(exc)}
+        return
+    yield {"type": "data", "data": data}
+    try:
+        async for kind, payload in chat_stream(_report_messages(data), max_tokens=2000, temperature=0.3, timeout_s=90):
+            if kind == "delta":
+                yield {"type": "delta", "text": payload}
+            elif kind == "done":
+                audit(None, "SYSTEM", "AI_REPORT", f"Sinh báo cáo AI {data['nút_giao']} ({hours:g} giờ)",
+                      username=user.username, role=user.role, target=data["mã"], intersection_id=intersection_id)
+                yield {"type": "done", "model": payload["model"], "latency_ms": round(payload["latency_ms"]),
+                       "generated_at": datetime.now(timezone.utc).isoformat()}
+    except LLMError as exc:
+        yield {"type": "error", "message": str(exc)}
+
+
+async def make_report(intersection_id: int, hours: float, user: CurrentUser) -> dict:
+    hours = min(max(float(hours), 1), 24 * 31)
+    data = _report_data(intersection_id, hours)
+    reply = await chat(_report_messages(data), max_tokens=2000, temperature=0.3, timeout_s=45)
     audit(None, "SYSTEM", "AI_REPORT", f"Sinh báo cáo AI {data['nút_giao']} ({hours:g} giờ)", username=user.username,
           role=user.role, target=data["mã"], intersection_id=intersection_id)
     return {"markdown": reply.content, "data": data, "model": reply.model, "latency_ms": round(reply.latency_ms),

@@ -477,3 +477,17 @@ export interface AiReport {
   latency_ms: number;
   generated_at: string;
 }
+
+export type ChatStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "tool_start"; tool: string }
+  | { type: "tool"; tool: string; args: Record<string, unknown>; ok: boolean }
+  | { type: "action"; action: AssistantAction }
+  | { type: "done"; model: string; latency_ms: number }
+  | { type: "error"; message: string };
+
+export type ReportStreamEvent =
+  | { type: "data"; data: Record<string, unknown> }
+  | { type: "delta"; text: string }
+  | { type: "done"; model: string; latency_ms: number; generated_at: string }
+  | { type: "error"; message: string };

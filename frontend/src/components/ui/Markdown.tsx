@@ -42,6 +42,21 @@ export function Markdown({ text, className }: { text: string; className?: string
       i++;
       continue;
     }
+    if (/^\s*>/.test(line)) {
+      const quote: string[] = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) quote.push(lines[i++].replace(/^\s*>\s?/, ""));
+      blocks.push(
+        <blockquote key={key} className="my-2 border-l-[3px] border-[#8B5CF6]/60 bg-[#8B5CF6]/5 py-1 pl-3 pr-2 text-ink-dim">
+          {quote.map((q, j) => <div key={j}>{inline(q, `${key}${j}`)}</div>)}
+        </blockquote>,
+      );
+      continue;
+    }
+    if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) {
+      blocks.push(<hr key={key} className="my-3 border-line/60" />);
+      i++;
+      continue;
+    }
     if (/^\s*\|/.test(line) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
       const head = cells(line);
       const rows: string[][] = [];
@@ -81,7 +96,7 @@ export function Markdown({ text, className }: { text: string; className?: string
       continue;
     }
     const para: string[] = [];
-    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*[-*•]\s|\s*\d+[.)]\s|\s*\|)/.test(lines[i])) para.push(lines[i++]);
+    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*[-*•]\s|\s*\d+[.)]\s|\s*\||\s*>)/.test(lines[i])) para.push(lines[i++]);
     if (!para.length) para.push(lines[i++]);
     blocks.push(
       <p key={key} className="my-1.5">

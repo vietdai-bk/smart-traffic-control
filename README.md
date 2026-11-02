@@ -75,7 +75,7 @@ cd frontend && npm install && cd ..
    # mở backend/.env và điền: GROQ_API_KEY=gsk_xxx
    ```
 
-3. Khởi động lại backend. Badge **Groq · llama-3.3** xuất hiện trên thẻ *LLM Supervisor*.
+3. Khởi động lại backend. Badge **Groq · openai/gpt-oss-120b** xuất hiện trên thẻ *LLM Supervisor*.
 
 | Tính năng | Ở đâu | Ghi chú |
 |-----------|-------|---------|
@@ -174,7 +174,7 @@ Vào *Nút giao & Cấu hình → Camera*, đổi nguồn sang `RTSP` / `HTTP` /
 | `STCS_RESET_DB` | `0` | `1` = xoá và tạo lại CSDL khi khởi động |
 | `GROQ_API_KEY` | (trống) | Khoá Groq; trống = tắt mọi tính năng LLM |
 | `GROQ_BASE_URL` | `https://api.groq.com/openai/v1` | Endpoint OpenAI-compatible |
-| `STCS_LLM_MODEL` | `llama-3.3-70b-versatile` | Model cho Supervisor, trợ lý, báo cáo |
+| `STCS_LLM_MODEL` | `openai/gpt-oss-120b` | Model cho Supervisor, trợ lý, báo cáo |
 | `STCS_LLM_MODE` | `ADVISORY` | Chế độ Supervisor khi khởi động: `OFF` / `ADVISORY` / `AUTONOMOUS` |
 | `STCS_LLM_INTERVAL_S` | `60` | Chu kỳ phân tích định kỳ (giây) |
 | `STCS_LLM_TIMEOUT_S` | `8` | Timeout mỗi lần gọi Supervisor |

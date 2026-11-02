@@ -4,7 +4,10 @@ from __future__ import annotations
 import time
 from typing import Literal
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -134,7 +137,7 @@ def decisions(intersection_id: int | None = None, status: str | None = None, pag
 # ------------------------------------------------------------------ trợ lý vận hành
 class ChatMsg(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(max_length=4000)
+    content: str = Field(max_length=100_000)  # trả lời dài của trợ lý được gửi lại trong lịch sử
 
 
 class ChatIn(BaseModel):
@@ -183,3 +186,27 @@ async def report(body: ReportIn, cur: CurrentUser = Depends(require(Perm.REPORT_
         raise HTTPException(404, str(exc)) from exc
     except LLMError as exc:
         raise HTTPException(502, str(exc)) from exc
+
+
+# ------------------------------------------------------------------ streaming (SSE) — hiển thị từng chữ
+def _sse(gen):
+    async def body():
+        async for ev in gen:
+            yield f"data: {json.dumps(ev, ensure_ascii=False, default=str)}\n\n"
+
+    return StreamingResponse(body(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@router.post("/assistant/chat/stream")
+async def assistant_chat_stream(body: ChatIn, cur: CurrentUser = Depends(require(Perm.ASSISTANT_USE))):
+    if not is_configured():
+        raise HTTPException(503, "Chưa cấu hình GROQ_API_KEY — trợ lý LLM đang tắt")
+    return _sse(assistant.run_chat_stream(cur, [m.model_dump() for m in body.messages], body.intersection_id))
+
+
+@router.post("/report/stream")
+async def report_stream(body: ReportIn, cur: CurrentUser = Depends(require(Perm.REPORT_AI))):
+    if not is_configured():
+        raise HTTPException(503, "Chưa cấu hình GROQ_API_KEY — báo cáo AI đang tắt")
+    return _sse(assistant.make_report_stream(body.intersection_id, body.hours, cur))

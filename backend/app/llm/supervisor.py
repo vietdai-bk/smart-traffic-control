@@ -24,7 +24,7 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.events import bus
 from app.db.session import session_scope
-from app.llm.client import LLMError, chat, is_configured
+from app.llm.client import LLMError, cap, chat, is_configured
 from app.models.alert import Alert
 from app.models.llm import LlmDecision
 
@@ -206,7 +206,7 @@ def validate_proposal(data: dict, current: tuple[float, float]) -> tuple[dict, l
         "weight_ns": round(w_ns, 2),
         "weight_ew": round(w_ew, 2),
         "duration_min": round(dur, 1),
-        "reason": reason[:600],
+        "reason": cap(reason, 600),
     }, notes
 
 
@@ -354,7 +354,7 @@ class SupervisorService:
                  {"role": "user", "content": "Số liệu hiện tại:\n" + json.dumps(ctx, ensure_ascii=False)}],
                 json_mode=True, max_tokens=350, temperature=0.1,
             )
-            row.model, row.latency_ms, row.raw_output = reply.model, round(reply.latency_ms, 1), reply.content[:4000]
+            row.model, row.latency_ms, row.raw_output = reply.model, round(reply.latency_ms, 1), cap(reply.content, 4000)
             proposal, notes = validate_proposal(reply.json(), (st.weight_ns, st.weight_ew))
             row.strategy, row.weight_ns, row.weight_ew = proposal["strategy"], proposal["weight_ns"], proposal["weight_ew"]
             row.duration_min, row.reason = proposal["duration_min"], proposal["reason"]

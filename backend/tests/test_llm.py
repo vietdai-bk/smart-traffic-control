@@ -132,3 +132,36 @@ def test_assistant_action_needs_confirmation(client, fake_llm):
     c = client.post(f"/api/llm/assistant/actions/{aid}/confirm", headers=h)
     assert c.status_code == 200 and c.json()["ok"], c.text
     assert manager.get(1).fsm.mode.value == "FIXED_TIME"
+
+
+def test_assistant_chat_stream_sse(client, monkeypatch):
+    """SSE: sự kiện tool → delta từng mẩu chữ → done (LLM giả lập)."""
+    import json as _json
+
+    import app.api.routes.llm as routes
+    import app.llm.assistant as asst
+
+    rounds = [
+        [("tool_calls", [{"id": "c1", "type": "function",
+                          "function": {"name": "get_intersection_status", "arguments": '{"intersection_id":1}'}}]),
+         ("done", {"model": "fake", "latency_ms": 5.0, "content": ""})],
+        [("delta", "Hướng "), ("delta", "Bắc "), ("delta", "đông nhất."),
+         ("done", {"model": "fake", "latency_ms": 7.0, "content": "Hướng Bắc đông nhất."})],
+    ]
+
+    async def fake_stream(messages, **kw):
+        for ev in rounds.pop(0):
+            yield ev
+
+    monkeypatch.setattr(routes, "is_configured", lambda: True)
+    monkeypatch.setattr(asst, "chat_stream", fake_stream)
+    h = _auth(client, "operator", "operator123")
+    with client.stream("POST", "/api/llm/assistant/chat/stream", headers=h,
+                       json={"messages": [{"role": "user", "content": "hướng nào đông?"}], "intersection_id": 1}) as r:
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/event-stream")
+        events = [_json.loads(line[5:]) for line in r.iter_lines() if line.startswith("data:")]
+    kinds = [e["type"] for e in events]
+    assert kinds[:2] == ["tool_start", "tool"] and events[1]["ok"] is True
+    assert "".join(e["text"] for e in events if e["type"] == "delta") == "Hướng Bắc đông nhất."
+    assert kinds[-1] == "done" and events[-1]["latency_ms"] == 12

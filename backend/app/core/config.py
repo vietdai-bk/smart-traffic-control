@@ -69,11 +69,15 @@ class Settings:
     # LLM Supervisor & trợ lý vận hành — Groq (OpenAI-compatible API)
     groq_api_key: str = field(default_factory=lambda: _env("GROQ_API_KEY", ""))
     groq_base_url: str = field(default_factory=lambda: _env("GROQ_BASE_URL", "https://api.groq.com/openai/v1"))
-    llm_model: str = field(default_factory=lambda: _env("STCS_LLM_MODEL", "llama-3.3-70b-versatile"))
-    llm_fast_model: str = field(default_factory=lambda: _env("STCS_LLM_FAST_MODEL", "llama-3.1-8b-instant"))
+    llm_model: str = field(default_factory=lambda: _env("STCS_LLM_MODEL", "openai/gpt-oss-120b"))
+    llm_fast_model: str = field(default_factory=lambda: _env("STCS_LLM_FAST_MODEL", "openai/gpt-oss-20b"))
     llm_mode: str = field(default_factory=lambda: _env("STCS_LLM_MODE", "ADVISORY"))  # OFF | ADVISORY | AUTONOMOUS
     llm_interval_s: float = field(default_factory=lambda: float(_env("STCS_LLM_INTERVAL_S", "60")))
     llm_timeout_s: float = field(default_factory=lambda: float(_env("STCS_LLM_TIMEOUT_S", "8")))
+    # TẠM THỜI để kiểm thử: 1 = không giới hạn độ dài trả lời của LLM (bỏ max_tokens & cắt chuỗi)
+    llm_unlimited: bool = field(default_factory=lambda: _env("STCS_LLM_UNLIMITED", "0") == "1")
+    # Trợ lý: 1 = trả lời cả câu hỏi ngoài lề (kiến thức chung, lập trình…); 0 = chỉ chủ đề giao thông/STCS
+    assistant_open_topic: bool = field(default_factory=lambda: _env("STCS_ASSISTANT_OPEN_TOPIC", "0") == "1")
     llm_min_gap_s: float = 20.0          # không gọi LLM dày hơn mức này kể cả khi có sự kiện
     llm_pending_ttl_s: float = 120.0     # đề xuất chế độ Tư vấn hết hạn nếu không được duyệt
 

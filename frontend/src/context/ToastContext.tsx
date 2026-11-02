@@ -36,22 +36,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={{ push }}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-2" aria-live="polite">
-        {items.map((t) => {
+      <div className="pointer-events-none fixed inset-x-3 top-[calc(var(--header-h,57px)+8px)] z-[100] flex flex-col gap-2 md:inset-x-auto md:bottom-4 md:right-4 md:top-auto md:w-[380px]" aria-live="polite">
+        {items.map((t, i) => {
           const Icon = ICON[t.tone];
           return (
             <div
               key={t.id}
               role="status"
               className={clsx(
-                "pointer-events-auto flex gap-3 rounded-card border bg-surface/98 p-3.5 shadow-pop backdrop-blur-md transition-all ring-1 ring-black/5 dark:ring-white/10",
+                i < items.length - 2 && "max-md:hidden",
+                "pointer-events-auto flex gap-3 rounded-card border bg-surface/98 p-2.5 shadow-pop md:p-3.5 backdrop-blur-md transition-all ring-1 ring-black/5 dark:ring-white/10",
                 TONE[t.tone],
               )}
             >
               <Icon className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-ink">{t.title}</p>
-                {t.body && <p className="mt-0.5 text-xs leading-relaxed text-ink-dim">{t.body}</p>}
+                {t.body && <p className="mt-0.5 text-xs leading-relaxed text-ink-dim max-md:line-clamp-2">{t.body}</p>}
               </div>
               <button onClick={() => dismiss(t.id)} className="text-ink-mute hover:text-ink" aria-label="Đóng thông báo">
                 <X className="h-4 w-4" />

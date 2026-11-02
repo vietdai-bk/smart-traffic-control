@@ -35,15 +35,15 @@ export function Panel({
       )}
     >
       {(title || actions) && (
-        <header className="flex min-h-[42px] items-center justify-between gap-3 border-b border-line/60 bg-panel/30 px-3.5 py-2.5">
+        <header className="flex min-h-[42px] flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line/60 bg-panel/30 px-3 py-2.5 sm:px-3.5">
           <div className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold tracking-tight text-ink">
             {icon && <span className="text-ink-dim">{icon}</span>}
             <span className="truncate">{title}</span>
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
+          {actions && <div className="flex max-w-full flex-wrap items-center gap-1.5">{actions}</div>}
         </header>
       )}
-      <div className={clsx("min-h-0 flex-1", bodyClassName ?? "p-3.5")}>{children}</div>
+      <div className={clsx("min-h-0 flex-1", bodyClassName ?? "p-3 sm:p-3.5")}>{children}</div>
     </section>
   );
 }

@@ -9,7 +9,7 @@ services:
       STCS_DATABASE_URL: "sqlite:////data/stcs.db"
       # LLM Groq — đặt trong file .env ở thư mục gốc (docker compose tự đọc)
       GROQ_API_KEY: "${GROQ_API_KEY:-}"
-      STCS_LLM_MODEL: "${STCS_LLM_MODEL:-llama-3.3-70b-versatile}"
+      STCS_LLM_MODEL: "${STCS_LLM_MODEL:-openai/gpt-oss-120b}"
       STCS_LLM_MODE: "${STCS_LLM_MODE:-ADVISORY}"
     volumes:
       - stcs-data:/data

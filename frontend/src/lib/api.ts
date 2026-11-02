@@ -101,3 +101,51 @@ export async function download(path: string, fallbackName: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * POST + đọc luồng Server-Sent Events (mỗi sự kiện: `data: {json}\n\n`).
+ * Dùng cho trợ lý/báo cáo AI để hiển thị từng chữ khi LLM đang sinh. Hủy bằng AbortSignal.
+ */
+export async function streamPost<E>(path: string, body: unknown, onEvent: (e: E) => void, signal?: AbortSignal): Promise<void> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "text/event-stream" };
+  const token = tokenStore.get();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, { method: "POST", headers, body: JSON.stringify(body), signal });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new ApiError(0, "Không kết nối được máy chủ STCS. Kiểm tra backend đang chạy.");
+  }
+  if (!res.ok || !res.body) {
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      /* không phải JSON */
+    }
+    if (res.status === 401) onUnauthorized?.();
+    throw new ApiError(res.status, detailMessage(data, res.status));
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      for (const line of chunk.split("\n")) {
+        if (!line.startsWith("data:")) continue;
+        try {
+          onEvent(JSON.parse(line.slice(5).trim()) as E);
+        } catch {
+          /* bỏ qua dòng hỏng */
+        }
+      }
+    }
+  }
+}

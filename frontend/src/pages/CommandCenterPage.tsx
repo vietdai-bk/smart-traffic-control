@@ -17,6 +17,7 @@ import { useLive } from "@/context/LiveContext";
 import { api } from "@/lib/api";
 import { DIRECTIONS, DIR_LABEL, LEVEL_COLOR, LEVEL_LABEL, MODE_COLOR, MODE_LABEL, fmtInt, tone } from "@/lib/format";
 import type { Direction, Intersection, Snapshot } from "@/lib/types";
+import { useDevice } from "@/lib/useMedia";
 
 function KpiStrip({ s }: { s: Snapshot }) {
   const items: { label: string; value: string; unit?: string; color?: string; sub?: string }[] = [
@@ -66,7 +67,12 @@ export default function CommandCenterPage() {
   const { snapshot, selectedId, status } = useLive();
   const { can } = useAuth();
   const [intersections, setIntersections] = useState<Intersection[]>([]);
-  const [layout, setLayout] = useState<"grid" | "single">("grid");
+  const device = useDevice();
+  // Adaptive: điện thoại mặc định xem 1 camera (đỡ băng thông & dễ nhìn), máy lớn xem lưới 2×2
+  const [layout, setLayout] = useState<"grid" | "single">(() => (window.matchMedia("(max-width: 767px)").matches ? "single" : "grid"));
+  useEffect(() => {
+    if (device === "phone") setLayout("single");
+  }, [device]);
   const [focus, setFocus] = useState<Direction>("NORTH");
   const [showBoxes, setShowBoxes] = useState(true);
   const [showRoi, setShowRoi] = useState(true);
@@ -98,9 +104,9 @@ export default function CommandCenterPage() {
               <Toggle checked={showBoxes} onChange={setShowBoxes} label="AI overlay" />
               <Toggle checked={showRoi} onChange={setShowRoi} label="ROI & vạch đếm" />
               {layout === "single" && (
-                <Segmented size="sm" value={focus} onChange={setFocus} options={DIRECTIONS.map((d) => ({ id: d, label: DIR_LABEL[d] }))} />
+                <Segmented size="sm" value={focus} onChange={setFocus} options={DIRECTIONS.map((d) => ({ id: d, label: device === "phone" ? DIR_LABEL[d].slice(0, 1) : DIR_LABEL[d] }))} />
               )}
-              <Segmented
+              {device !== "phone" && <Segmented
                 size="sm"
                 value={layout}
                 onChange={setLayout}
@@ -108,7 +114,7 @@ export default function CommandCenterPage() {
                   { id: "grid", label: <Grid2x2 className="h-3.5 w-3.5" aria-label="Lưới 2×2" /> },
                   { id: "single", label: <Square className="h-3.5 w-3.5" aria-label="Một hướng" /> },
                 ]}
-              />
+              />}
               {can("sim:control") && (
                 <Button size="sm" variant={sims ? "warn" : "secondary"} icon={<FlaskConical className="h-3.5 w-3.5" />} onClick={() => setSimOpen(true)}>
                   Giả lập{sims ? ` (${sims})` : ""}
