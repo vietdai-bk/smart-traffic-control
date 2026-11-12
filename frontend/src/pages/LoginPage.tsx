@@ -10,7 +10,6 @@ const DEMO = [
   { username: "admin", password: "admin123", role: "ADMIN", title: "Quản trị viên", can: "Toàn quyền: cấu hình nút giao, camera, tài khoản, nhật ký" },
   { username: "operator", password: "operator123", role: "OPERATOR", title: "Người vận hành", can: "Điều khiển đèn, chuyển chế độ, xác nhận cảnh báo, giả lập sự cố" },
   { username: "manager", password: "manager123", role: "MANAGER", title: "Người quản lý", can: "Xem giám sát, thống kê, đánh giá hiệu quả, nhật ký (chỉ đọc)" },
-  { username: "viewer", password: "viewer123", role: "VIEWER", title: "Người xem dữ liệu", can: "Chỉ xem thống kê, cảnh báo và hỏi trợ lý AI (không xem video)" },
 ];
 
 /** Cột đèn tín hiệu chạy chu kỳ thật: Xanh 6s → Vàng 3s → Đỏ 6s */
@@ -40,7 +39,7 @@ function SignalHead() {
       </div>
       <div className="pb-1">
         <div
-          className="num text-6xl font-extrabold leading-none tracking-tight sm:text-7xl"
+          className="num text-6xl font-semibold leading-none tracking-tight sm:text-7xl"
           style={{
             color: phase === "G" ? "rgb(var(--c-go))" : phase === "Y" ? "rgb(var(--c-warn))" : "rgb(var(--c-stop))",
             textShadow: `0 0 20px ${phase === "G" ? "#10b98155" : phase === "Y" ? "#f59e0b55" : "#ef444455"}`,
@@ -95,12 +94,12 @@ export default function LoginPage() {
     error?.status === 403 ? "Tài khoản bị khoá" : error?.status === 423 ? "Tạm khoá đăng nhập" : error?.status === 0 ? "Mất kết nối máy chủ" : "Đăng nhập không thành công";
 
   return (
-    <div className="grid-bg relative grid min-h-screen bg-carbon lg:grid-cols-[1.1fr_1fr]">
+    <div className="relative grid min-h-screen bg-carbon lg:grid-cols-[1.1fr_1fr]">
       {/* Theme Switcher Top-Right */}
       <div className="absolute right-4 top-4 z-50">
         <button
           onClick={toggleTheme}
-          className="flex h-9 w-9 items-center justify-center rounded-ctl border border-line/80 bg-surface/80 p-2 text-ink-mute shadow-sm backdrop-blur transition-all hover:bg-panel hover:text-ink active:scale-95"
+          className="flex h-9 w-9 items-center justify-center rounded-ctl border border-line/80 bg-surface p-2 text-ink-mute transition-colors hover:bg-panel hover:text-ink active:scale-95"
           title={theme === "dark" ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"}
         >
           {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-blue-600" />}
@@ -108,14 +107,14 @@ export default function LoginPage() {
       </div>
 
       {/* Hero Showcase bên trái */}
-      <section className="hidden flex-col justify-between border-r border-line/80 bg-surface/40 p-12 backdrop-blur-sm lg:flex">
+      <section className="hidden flex-col justify-between border-r border-line/80 bg-panel/50 p-12 lg:flex">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-ctl bg-slate-900 shadow ring-1 ring-slate-700">
             <Radio className="h-4 w-4 text-blue-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-extrabold tracking-tight text-ink">STCS</span>
+              <span className="text-base font-semibold tracking-tight text-ink">STCS</span>
               <span className="rounded bg-auto/15 px-1.5 py-0.2 text-[10px] font-bold text-auto">ĐÀ NẴNG</span>
             </div>
             <div className="text-2xs font-medium text-ink-mute">Trung tâm Giám sát & Điều khiển Giao thông</div>
@@ -124,10 +123,10 @@ export default function LoginPage() {
 
         <div className="max-w-xl">
           <SignalHead />
-          <h1 className="mt-10 text-[2.8rem] font-extrabold leading-[1.15] tracking-tight text-ink">
+          <h1 className="mt-10 text-[2.8rem] font-semibold leading-[1.15] tracking-tight text-ink">
             Mỗi giây đèn xanh
             <br />
-            <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+            <span className="text-auto-ink">
               tính từ hàng đợi thật.
             </span>
           </h1>
@@ -155,9 +154,9 @@ export default function LoginPage() {
 
       {/* Form đăng nhập bên phải */}
       <section className="flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[420px] rounded-card border border-line/80 bg-surface/90 p-8 shadow-pop backdrop-blur-md">
+        <div className="w-full max-w-[420px] rounded-card border border-line/80 bg-surface p-6 sm:p-8 shadow-panel">
           <div className="mb-6">
-            <h2 className="text-2xl font-extrabold tracking-tight text-ink">Đăng nhập hệ thống</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-ink">Đăng nhập hệ thống</h2>
             <p className="mt-1 text-xs font-medium text-ink-mute">Truy cập trung tâm tác chiến điều hành giao thông STCS.</p>
           </div>
 
@@ -208,7 +207,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={!!busy}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-ctl bg-auto text-sm font-bold text-white shadow-md shadow-auto/25 transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-ctl bg-auto text-sm font-bold text-white transition-colors hover:brightness-95 disabled:opacity-60"
             >
               {busy === "form" && <Loader2 className="h-4 w-4 animate-spin" />}
               Đăng nhập phiên tác chiến

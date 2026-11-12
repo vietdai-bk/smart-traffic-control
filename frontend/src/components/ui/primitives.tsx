@@ -23,19 +23,19 @@ export function Panel({
   return (
     <section
       className={clsx(
-        "flex min-w-0 flex-col rounded-panel border bg-surface shadow-panel transition-all print-plain",
+        "flex min-w-0 flex-col rounded-panel border bg-surface shadow-panel transition-colors print-plain",
         panelTone === "danger"
-          ? "border-stop/50 ring-1 ring-stop/20"
+          ? "border-stop/50"
           : panelTone === "manual"
-            ? "border-manual/50 ring-1 ring-manual/20"
+            ? "border-manual/50"
             : panelTone === "auto"
-              ? "border-auto/50 ring-1 ring-auto/20"
+              ? "border-auto/50"
               : "border-line/80",
         className,
       )}
     >
       {(title || actions) && (
-        <header className="flex min-h-[42px] flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line/60 bg-panel/30 px-3 py-2.5 sm:px-3.5">
+        <header className="flex min-h-[42px] flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line/60 bg-surface rounded-t-panel px-3 py-3 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold tracking-tight text-ink">
             {icon && <span className="text-ink-dim">{icon}</span>}
             <span className="truncate">{title}</span>
@@ -43,15 +43,15 @@ export function Panel({
           {actions && <div className="flex max-w-full flex-wrap items-center gap-1.5">{actions}</div>}
         </header>
       )}
-      <div className={clsx("min-h-0 flex-1", bodyClassName ?? "p-3 sm:p-3.5")}>{children}</div>
+      <div className={clsx("min-h-0 flex-1", bodyClassName ?? "p-3 sm:p-4")}>{children}</div>
     </section>
   );
 }
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "manual" | "success" | "warn";
 const BTN: Record<BtnVariant, string> = {
-  primary: "bg-auto text-white hover:brightness-110 active:brightness-95 border-auto/80 shadow-sm shadow-auto/20",
-  secondary: "bg-panel text-ink hover:bg-line/70 active:bg-line border-line/80 shadow-sm",
+  primary: "bg-auto text-white hover:brightness-95 active:brightness-90 border-auto",
+  secondary: "bg-surface text-ink hover:bg-panel active:bg-line border-line",
   ghost: "bg-transparent text-ink-dim hover:text-ink hover:bg-panel border-transparent",
   danger: "bg-stop/15 text-stop-ink hover:bg-stop/25 active:bg-stop/30 border-stop/50",
   manual: "bg-manual/15 text-manual-ink hover:bg-manual/25 active:bg-manual/30 border-manual/50",
@@ -79,7 +79,7 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={clsx(
-        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-ctl border font-medium transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
+        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-ctl border font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-[13px]",
         BTN[variant],
         className,
@@ -110,7 +110,7 @@ export function Badge({
     <span
       title={title}
       className={clsx(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-tag border px-2 py-0.5 text-2xs font-semibold leading-4 tracking-wide",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-tag border px-2 py-0.5 text-2xs font-medium leading-4",
         pulse && "animate-pulseRing",
         className,
       )}
@@ -119,8 +119,8 @@ export function Badge({
           ? { background: color, borderColor: color, color: "#FFFFFF" }
           : {
               color: tone(color, 82),
-              borderColor: `color-mix(in srgb, ${color} 38%, transparent)`,
-              background: `color-mix(in srgb, ${color} 12%, transparent)`,
+              borderColor: `color-mix(in srgb, ${color} 28%, transparent)`,
+              background: `color-mix(in srgb, ${color} 8%, transparent)`,
             }
       }
     >
@@ -138,7 +138,6 @@ export function Dot({ color, pulse, size = 8 }: { color: string; pulse?: boolean
         width: size,
         height: size,
         background: color,
-        boxShadow: `0 0 6px color-mix(in srgb, ${color} 60%, transparent)`,
       }}
     />
   );
@@ -216,7 +215,7 @@ export function Tabs<T extends string>({
             className={clsx(
               "-mb-px flex items-center gap-2 whitespace-nowrap rounded-t-ctl border-b-2 px-3.5 py-2.5 text-xs font-semibold transition-all",
               active
-                ? "border-auto bg-surface text-auto shadow-sm"
+                ? "border-auto bg-surface text-auto-ink"
                 : "border-transparent text-ink-mute hover:bg-panel/40 hover:text-ink",
             )}
           >
@@ -248,7 +247,7 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex rounded-ctl border border-line/80 bg-carbon p-0.5 shadow-inner">
+    <div className="inline-flex rounded-ctl border border-line/80 bg-panel p-0.5">
       {options.map((o) => {
         const active = value === o.id;
         return (

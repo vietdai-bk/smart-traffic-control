@@ -407,9 +407,6 @@ export default function AlertsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/80 bg-surface p-4 shadow-panel">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-ink">Trung tâm Cảnh báo & Xử lý Sự cố</h1>
-          <p className="mt-0.5 text-xs font-medium text-ink-mute">
-            Cảnh báo ùn tắc vượt ngưỡng, fail-safe và sự cố thiết bị tại hiện trường được phát hiện tự động và đồng bộ thời gian thực.
-          </p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">

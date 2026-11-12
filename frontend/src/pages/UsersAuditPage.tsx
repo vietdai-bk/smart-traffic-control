@@ -67,7 +67,7 @@ function UsersTab() {
   }, [q, toast]);
   useEffect(load, [load]);
   useEffect(() => {
-    api.get<typeof roles>("/users/roles").then(setRoles).catch(() => undefined);
+    api.get<typeof roles>("/users/roles").then((items) => setRoles(items.filter((r) => r.role !== "VIEWER"))).catch(() => undefined);
   }, []);
 
   const save = async () => {
@@ -248,7 +248,8 @@ function UsersTab() {
             <Field label="Số điện thoại"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
             <Field label="Vai trò">
               <Select value={form.role} disabled={form.id === me?.id} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
-                {(["ADMIN", "OPERATOR", "MANAGER", "VIEWER"] as Role[]).map((r) => (
+                {form.id && form.role === "VIEWER" && <option value="VIEWER">{ROLE_LABEL.VIEWER}</option>}
+                {(["ADMIN", "OPERATOR", "MANAGER"] as Role[]).map((r) => (
                   <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                 ))}
               </Select>
@@ -451,9 +452,6 @@ export default function UsersAuditPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/80 bg-surface p-4 shadow-panel">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-ink">Quản trị Tài khoản & Nhật ký Hoạt động</h1>
-          <p className="mt-0.5 text-xs font-medium text-ink-mute">
-            Phân quyền vai trò quản trị (Admin, Operator, Manager), bảo mật truy cập và đối soát nhật ký kiểm toán (Audit Trail).
-          </p>
         </div>
       </div>
       <Tabs value={tab} onChange={(t) => setParams({ tab: t })} tabs={tabs} />

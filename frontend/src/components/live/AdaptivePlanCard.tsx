@@ -13,7 +13,7 @@ export function AdaptivePlanCard({ snap }: { snap: Snapshot | null }) {
 
   return (
     <Panel
-      title="Webster · thời gian xanh (tầng 2)"
+      title="Thời gian xanh đề xuất"
       icon={<BrainCircuit className="h-4 w-4 text-auto" />}
       actions={
         sig &&
@@ -35,19 +35,19 @@ export function AdaptivePlanCard({ snap }: { snap: Snapshot | null }) {
             <div className="mb-1.5 flex justify-between text-2xs font-semibold text-ink-mute">
               <span>Phân bổ thời gian xanh đề xuất (Webster)</span>
               <span className="num font-bold text-ink">
-                Chu kỳ {plan.cycle_s.toFixed(0)}s · Lý thuyết {plan.webster_cycle_s.toFixed(0)}s
+                Chu kỳ {plan.cycle_s.toFixed(0)}s
               </span>
             </div>
-            <div className="flex h-8 overflow-hidden rounded-ctl border border-line/80 bg-panel/30 text-xs font-bold shadow-inner">
+            <div className="flex h-8 overflow-hidden rounded-ctl border border-line/80 bg-panel/30 text-xs font-semibold">
               <div
-                className="num flex items-center justify-center bg-go/30 text-go-ink transition-[width] duration-700"
+                className="num flex items-center justify-center bg-panel text-ink transition-[width] duration-700"
                 style={{ width: `${(plan.green_ns / total) * 100}%` }}
                 title={`Pha 1 (Bắc–Nam): ${plan.green_ns.toFixed(0)}s`}
               >
                 Bắc–Nam {plan.green_ns.toFixed(0)}s ({((plan.green_ns / total) * 100).toFixed(0)}%)
               </div>
               <div
-                className="num flex items-center justify-center border-l border-line bg-auto/30 text-auto-ink transition-[width] duration-700"
+                className="num flex items-center justify-center border-l border-line bg-surface text-ink transition-[width] duration-700"
                 style={{ width: `${(plan.green_ew / total) * 100}%` }}
                 title={`Pha 2 (Đông–Tây): ${plan.green_ew.toFixed(0)}s`}
               >
@@ -64,6 +64,10 @@ export function AdaptivePlanCard({ snap }: { snap: Snapshot | null }) {
             )}
           </div>
 
+          {plan.saturated && <p className="text-xs font-medium text-warn-ink">Nút giao gần bão hoà</p>}
+          <details className="border-t border-line pt-2">
+            <summary className="cursor-pointer text-xs font-medium text-ink-dim">Chi tiết tính toán</summary>
+            <div className="mt-3 space-y-3">
           {/* Lưới nhu cầu */}
           <div className="grid grid-cols-2 gap-2.5 rounded-ctl border border-line/70 bg-panel/20 p-2.5">
             {[
@@ -98,10 +102,12 @@ export function AdaptivePlanCard({ snap }: { snap: Snapshot | null }) {
           </div>
 
           {/* Diễn giải lý do của AI */}
-          <div className="rounded-ctl border-l-3 border-auto bg-auto/10 p-2.5 text-xs leading-relaxed text-ink-dim">
+          <div className="rounded-ctl border border-line bg-panel/30 p-2.5 text-xs leading-relaxed text-ink-dim">
             <span className="font-bold text-ink">Lý do thuật toán: </span>
             {plan.reason}
           </div>
+            </div>
+          </details>
         </div>
       )}
     </Panel>

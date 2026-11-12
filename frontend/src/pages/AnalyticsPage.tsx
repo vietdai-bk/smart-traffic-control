@@ -23,9 +23,6 @@ export default function AnalyticsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/80 bg-surface p-4 shadow-panel">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-ink">Phân tích & Đánh giá Hiệu quả Vận hành</h1>
-          <p className="mt-0.5 text-xs font-medium text-ink-mute">
-            Thống kê lưu lượng 4 hướng tiếp cận, so sánh định lượng trước/sau AI Webster và nhật ký chu kỳ đèn.
-          </p>
         </div>
       </div>
       <Tabs

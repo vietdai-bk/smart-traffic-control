@@ -12,12 +12,13 @@ import {
   Unlock,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { api } from "@/lib/api";
-import { HEAD_COLOR, INTERVAL_LABEL, MODE_COLOR, MODE_LABEL, PHASE_LABEL, STATUS_LABEL, tone } from "@/lib/format";
+import { HEAD_COLOR, INTERVAL_LABEL, MODE_LABEL, PHASE_LABEL, STATUS_LABEL, tone } from "@/lib/format";
 import type { CommandResult, Mode, Snapshot } from "@/lib/types";
+import { Modal } from "../ui/Modal";
 import { Field, Input, Select } from "../ui/Form";
 import { Badge, Button, Dot, Panel } from "../ui/primitives";
 import { previewFlash, previewGoto, SafetyConfirmModal, type SafetyStep } from "./SafetyConfirmModal";
@@ -30,10 +31,16 @@ type Pending =
 export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
   const { can } = useAuth();
   const toast = useToast();
+  const quickLock = useRef(false);
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [quickChoice, setQuickChoice] = useState<{ command: "HOLD_PHASE" | "RELEASE_HOLD"; phase?: number; iid: number; duration: string } | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
-  const [holdPhase, setHoldPhase] = useState(1);
   const [holdDur, setHoldDur] = useState("60");
   const [timing, setTiming] = useState<{ ns: string; ew: string } | null>(null);
+
+  useEffect(() => {
+    setQuickChoice(null);
+  }, [snap?.intersection_id, holdDur, snap?.signal.hold?.phase_id, snap?.controller.online, snap?.signal.mode]);
 
   if (!snap) {
     return (
@@ -57,7 +64,7 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
       : lockedFlash
         ? "Đang FAILSAFE chớp vàng — cần khôi phục"
         : null;
-  const cmdDisabled = !!disabledReason;
+  const cmdDisabled = !!disabledReason || quickBusy;
   const t = sig.timing;
   const progress = sig.duration ? Math.min(100, (sig.elapsed / sig.duration) * 100) : 100;
   const intervalColor =
@@ -78,6 +85,25 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
     } catch (e) {
       toast("error", `${label} thất bại`, (e as Error).message);
       throw e;
+    }
+  };
+
+  const quickCommand = async (command: "HOLD_PHASE" | "RELEASE_HOLD", phase?: number) => {
+    if (cmdDisabled || quickLock.current) return;
+    quickLock.current = true;
+    setQuickBusy(true);
+    try {
+      await run(`/signals/${iid}/command`, {
+        command,
+        params: command === "HOLD_PHASE" ? { phase_id: phase, duration_s: holdDur ? Number(holdDur) : null } : {},
+        reason: command === "HOLD_PHASE" ? `Ưu tiên xe khẩn cấp ${PHASE_LABEL[phase!]}; thao tác nhanh` : "Bỏ giữ pha; thao tác nhanh",
+      }, command === "HOLD_PHASE" ? `Giữ xanh ${PHASE_LABEL[phase!]}` : "Bỏ giữ pha");
+    } catch {
+      // run() already displays the backend error; allow retry after completion.
+    } finally {
+      quickLock.current = false;
+      setQuickBusy(false);
+      setQuickChoice(null);
     }
   };
 
@@ -102,7 +128,7 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
     <Panel
       title="Điều khiển đèn tín hiệu"
       icon={<RadioTower className="h-4 w-4 text-auto" />}
-      tone={failsafe ? "danger" : sig.mode === "MANUAL" ? "manual" : sig.mode === "AUTO" ? "auto" : undefined}
+      tone={failsafe ? "danger" : undefined}
       actions={
         <span className="flex items-center gap-1.5 text-2xs text-ink-mute" title={snap.controller.endpoint}>
           <Dot color={ctlOnline ? "#10B981" : "#EF4444"} size={7} pulse={!ctlOnline} />
@@ -162,15 +188,11 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
                   className={clsx(
                     "flex flex-col items-start rounded-ctl border px-2.5 py-1.5 text-left transition-all disabled:cursor-default",
                     active
-                      ? "bg-surface text-ink ring-2 shadow-sm font-semibold"
+                      ? "border-ink-dim bg-panel text-ink font-semibold"
                       : "border-line/70 bg-panel/30 text-ink-dim hover:bg-panel hover:text-ink disabled:opacity-50",
                   )}
-                  style={active ? { borderColor: MODE_COLOR[m], boxShadow: `0 0 12px color-mix(in srgb, ${MODE_COLOR[m]} 20%, transparent)` } : undefined}
                 >
-                  <span className="num text-[11px] font-bold" style={{ color: tone(MODE_COLOR[m], 85) }}>
-                    {m}
-                  </span>
-                  <span className="text-2xs text-ink-mute">{MODE_LABEL[m]}</span>
+                  <span className="text-xs font-semibold">{MODE_LABEL[m]}</span>
                 </button>
               );
             })}
@@ -179,7 +201,7 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
       )}
 
       {/* Đồng hồ hiển thị Pha & Đếm ngược */}
-      <div className="relative overflow-hidden rounded-card border border-line/80 bg-panel/40 p-3 shadow-sm backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-card border border-line/80 bg-panel/30 p-3">
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-1.5">
@@ -198,7 +220,6 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
               className="num text-3xl font-extrabold leading-none tracking-tight sm:text-4xl"
               style={{
                 color: tone(intervalColor, 88),
-                textShadow: `0 0 14px color-mix(in srgb, ${intervalColor} 45%, transparent)`,
               }}
             >
               {sig.remaining == null ? (sig.interval === "FLASHING_YELLOW" ? "--" : "∞") : Math.ceil(sig.remaining).toString().padStart(2, "0")}
@@ -239,9 +260,7 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
 
         {/* Trạng thái khoá & xếp lịch */}
         <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {sig.min_green_ok ? (
-            <Badge color="#10B981">Đủ xanh tối thiểu</Badge>
-          ) : sig.interval === "GREEN" ? (
+          {!sig.min_green_ok && sig.interval === "GREEN" ? (
             <Badge color="#94A3B8">Khoá min green {Math.max(0, t.min_green - sig.elapsed).toFixed(0)}s</Badge>
           ) : null}
           {sig.hold && (
@@ -254,14 +273,67 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
         </div>
       </div>
 
+        {/* Giữ xanh khẩn cấp */}
+        <div className="mt-3 rounded-ctl border border-line bg-surface p-3">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold"><Ambulance className="h-4 w-4" />Ưu tiên xe khẩn cấp</div>
+          <Field label="Thời gian giữ xanh" className="mb-2">
+            <Select value={holdDur} onChange={(e) => setHoldDur(e.target.value)} disabled={cmdDisabled}>
+              <option value="30">30 s</option>
+              <option value="60">60 s</option>
+              <option value="120">120 s</option>
+              <option value="">Đến khi bỏ</option>
+            </Select>
+          </Field>
+          {sig.hold ? (
+            <Button variant="secondary" icon={<Unlock className="h-3.5 w-3.5" />}
+              disabled={cmdDisabled} loading={quickBusy} onClick={() => setQuickChoice({ command: "RELEASE_HOLD", iid, duration: holdDur })}>
+              Bỏ giữ
+            </Button>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {[1, 2].map((phase) => (
+                <Button key={phase} variant="secondary" icon={<Ambulance className="h-3.5 w-3.5" />}
+                  disabled={cmdDisabled} loading={quickBusy} onClick={() => setQuickChoice({ command: "HOLD_PHASE", phase, iid, duration: holdDur })}>
+                  {phase === 1 ? "Giữ Bắc–Nam" : "Giữ Đông–Tây"}
+                </Button>
+              ))}
+            </div>
+          )}
+          {quickChoice && quickChoice.iid === iid && quickChoice.duration === holdDur && (
+            <Modal
+              open
+              title="Xác nhận điều khiển khẩn cấp"
+              width={420}
+              onClose={() => { if (!quickLock.current) setQuickChoice(null); }}
+              footer={
+                <>
+                  <Button variant="ghost" data-autofocus disabled={quickBusy} onClick={() => setQuickChoice(null)}>Huỷ</Button>
+                  <Button variant="primary" disabled={cmdDisabled} loading={quickBusy}
+                    onClick={() => void quickCommand(quickChoice.command, quickChoice.phase)}>
+                    Xác nhận
+                  </Button>
+                </>
+              }
+            >
+              <p className="mb-2 text-sm font-semibold text-ink">{snap.name}</p>
+              <p className="text-sm text-ink-dim">
+                {quickChoice.command === "HOLD_PHASE"
+                  ? `Giữ ${PHASE_LABEL[quickChoice.phase!]} ${holdDur ? `${holdDur} giây` : "đến khi bỏ giữ"}?`
+                  : "Bỏ giữ pha và trở lại kế hoạch hiện hành?"}
+              </p>
+            </Modal>
+          )}
+        </div>
+
+
       {/* Lệnh can thiệp */}
       <div className="mt-3">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="label">Lệnh can thiệp khẩn / thủ công</span>
-          {disabledReason && <span className="truncate text-2xs font-semibold text-warn-ink">{disabledReason}</span>}
+          <span className="label">Điều khiển thường</span>
+          {disabledReason && <span className="text-2xs text-warn-ink">{disabledReason}</span>}
         </div>
         <div className="grid grid-cols-2 gap-1.5">
-          <Button variant="manual" icon={<ArrowRightLeft className="h-3.5 w-3.5" />} disabled={cmdDisabled} onClick={() => setPending(gotoPending(nextTarget, "NEXT_PHASE"))}>
+          <Button variant="secondary" icon={<ArrowRightLeft className="h-3.5 w-3.5" />} disabled={cmdDisabled} onClick={() => setPending(gotoPending(nextTarget, "NEXT_PHASE"))}>
             Chuyển pha kế tiếp
           </Button>
           <Button
@@ -300,65 +372,6 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
           ))}
         </div>
 
-        {/* Giữ xanh khẩn cấp */}
-        <div className="mt-2 flex items-end gap-1.5 rounded-ctl border border-line/80 bg-panel/30 p-2">
-          <Field label="Giữ xanh khẩn cấp (Xe ưu tiên)" className="flex-1">
-            <Select value={holdPhase} onChange={(e) => setHoldPhase(Number(e.target.value))} disabled={cmdDisabled}>
-              <option value={1}>{PHASE_LABEL[1]}</option>
-              <option value={2}>{PHASE_LABEL[2]}</option>
-            </Select>
-          </Field>
-          <Field label="Thời gian" className="w-[92px]">
-            <Select value={holdDur} onChange={(e) => setHoldDur(e.target.value)} disabled={cmdDisabled}>
-              <option value="30">30 s</option>
-              <option value="60">60 s</option>
-              <option value="120">120 s</option>
-              <option value="">Đến khi bỏ</option>
-            </Select>
-          </Field>
-          {sig.hold ? (
-            <Button
-              variant="secondary"
-              icon={<Unlock className="h-3.5 w-3.5" />}
-              disabled={cmdDisabled}
-              onClick={() =>
-                setPending({
-                  kind: "command",
-                  command: "RELEASE_HOLD",
-                  params: {},
-                  title: "Giải phóng giữ pha",
-                  description: "Trả quyền điều khiển cho chế độ hiện hành. Pha xanh có thể kết thúc ngay nếu đã vượt thời gian kế hoạch.",
-                  steps: [{ label: "Bỏ giữ pha", tone: "info" }, { label: "Tiếp tục theo kế hoạch", tone: "green" }],
-                  tone: "auto",
-                  confirmLabel: "Giải phóng",
-                })
-              }
-            >
-              Bỏ giữ
-            </Button>
-          ) : (
-            <Button
-              variant="danger"
-              icon={<Ambulance className="h-3.5 w-3.5" />}
-              disabled={cmdDisabled}
-              onClick={() =>
-                setPending({
-                  kind: "command",
-                  command: "HOLD_PHASE",
-                  params: { phase_id: holdPhase, duration_s: holdDur ? Number(holdDur) : null },
-                  title: `Giữ xanh khẩn cấp ${PHASE_LABEL[holdPhase]}`,
-                  description: `Ưu tiên xe khẩn cấp: giữ ${PHASE_LABEL[holdPhase]} xanh ${holdDur ? `${holdDur} giây` : "cho đến khi giải phóng"}, bỏ qua thời gian kế hoạch.`,
-                  steps: previewGoto(sig, holdPhase).concat([{ label: `Giữ xanh ${holdDur ? holdDur + "s" : "vô thời hạn"}`, tone: "green" }]),
-                  tone: "danger",
-                  requireReason: true,
-                  confirmLabel: "Kích hoạt giữ xanh",
-                })
-              }
-            >
-              Giữ
-            </Button>
-          )}
-        </div>
 
         <div className="mt-2 grid grid-cols-2 gap-1.5">
           <Button
@@ -517,7 +530,7 @@ export function SignalControlPanel({ snap }: { snap: Snapshot | null }) {
         />
       )}
       <div className="mt-3 flex items-center gap-1.5 text-2xs text-ink-mute">
-        <Clock4 className="h-3 w-3" />
+        <Clock4 className="h-3 w-3 shrink-0" />
         <span>
           Ràng buộc: xanh {t.min_green}–{t.max_green}s · chu kỳ {t.cycle_min}–{t.cycle_max}s · FAILSAFE: {sig.failsafe_strategy === "FLASHING_YELLOW" ? "chớp vàng" : "chu kỳ cố định"}
         </span>

@@ -15,43 +15,35 @@ import { Button, Panel, Segmented, Spinner } from "@/components/ui/primitives";
 import { useAuth } from "@/context/AuthContext";
 import { useLive } from "@/context/LiveContext";
 import { api } from "@/lib/api";
-import { DIRECTIONS, DIR_LABEL, LEVEL_COLOR, LEVEL_LABEL, MODE_COLOR, MODE_LABEL, fmtInt, tone } from "@/lib/format";
+import { DIRECTIONS, DIR_LABEL, LEVEL_LABEL, fmtInt } from "@/lib/format";
 import type { Direction, Intersection, Snapshot } from "@/lib/types";
 import { useDevice } from "@/lib/useMedia";
 
 function KpiStrip({ s }: { s: Snapshot }) {
   const items: { label: string; value: string; unit?: string; color?: string; sub?: string }[] = [
-    { label: "Chế độ điều khiển", value: s.signal.mode, color: MODE_COLOR[s.signal.mode], sub: MODE_LABEL[s.signal.mode] },
-    { label: "Tình trạng chung", value: LEVEL_LABEL[s.kpi.worst_level], color: LEVEL_COLOR[s.kpi.worst_level], sub: `Mật độ TB ${s.kpi.avg_density.toFixed(0)}%` },
+    { label: "Tình trạng chung", value: LEVEL_LABEL[s.kpi.worst_level], sub: `Mật độ TB ${s.kpi.avg_density.toFixed(0)}%` },
     { label: "Thời gian chờ TB", value: s.kpi.avg_wait_s == null ? "—" : s.kpi.avg_wait_s.toFixed(1), unit: "s", sub: "5 phút gần nhất" },
     { label: "Lưu lượng thông qua", value: fmtInt(s.kpi.flow_vph), unit: "xe/h", sub: "Tổng 4 hướng" },
     { label: "Đã đếm hôm nay", value: fmtInt(s.kpi.today_total), unit: "xe", sub: "Tích lũy từ 00:00" },
-    { label: "Chu kỳ AI đề xuất", value: s.plan ? s.plan.cycle_s.toFixed(0) : "—", unit: "s", sub: s.plan ? `Tỷ số Y = ${s.plan.flow_ratio_total.toFixed(2)}` : undefined },
   ];
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 min-[1600px]:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2.5 min-[1600px]:grid-cols-4">
       {items.map((it) => (
         <div
           key={it.label}
+          title={it.sub}
           className="relative min-w-0 rounded-panel border border-line/80 bg-surface p-3 shadow-panel transition-all hover:border-auto/50"
         >
-          {it.color && (
-            <span
-              className="absolute inset-x-0 top-0 h-[3px] rounded-t-panel"
-              style={{ background: it.color }}
-            />
-          )}
           <div className="label truncate">{it.label}</div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span
               className="num truncate text-xl font-bold tracking-tight"
-              style={it.color ? { color: tone(it.color, 85) } : undefined}
             >
               {it.value}
             </span>
             {it.unit && <span className="text-2xs font-semibold text-ink-mute">{it.unit}</span>}
           </div>
-          {it.sub && <div className="mt-0.5 truncate text-2xs text-ink-mute">{it.sub}</div>}
+
         </div>
       ))}
     </div>

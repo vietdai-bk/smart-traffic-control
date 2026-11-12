@@ -6,13 +6,13 @@
   /* ---------- Light Theme (Executive Day) ---------- */
   :root {
     color-scheme: light;
-    --c-carbon: 245 247 251;
+    --c-carbon: 246 247 248;
     --c-surface: 255 255 255;
-    --c-panel: 237 242 249;
-    --c-line: 220 228 238;
+    --c-panel: 241 243 245;
+    --c-line: 218 223 229;
     --c-ink: 15 23 42;
     --c-ink-dim: 51 65 85;
-    --c-ink-mute: 100 116 139;
+    --c-ink-mute: 100 112 129;
     --c-go: 5 150 105;
     --c-go-ink: 4 120 87;
     --c-warn: 217 119 6;
@@ -25,7 +25,7 @@
     --c-manual-ink: 126 34 206;
     --grid-line: rgba(100, 116, 139, 0.065);
     --shadow-panel: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
-    --shadow-pop: 0 16px 36px -4px rgba(15, 23, 42, 0.16);
+    --shadow-pop: 0 12px 32px -8px rgba(15, 23, 42, 0.14);
 
     /* Digital twin SVG colors (Light) */
     --twin-block: #e2e8f0;
@@ -41,13 +41,13 @@
   [data-theme="dark"],
   .dark {
     color-scheme: dark;
-    --c-carbon: 10 14 23;
-    --c-surface: 16 23 37;
-    --c-panel: 23 32 50;
-    --c-line: 32 44 67;
+    --c-carbon: 17 20 25;
+    --c-surface: 24 28 34;
+    --c-panel: 32 37 44;
+    --c-line: 49 56 66;
     --c-ink: 241 245 249;
     --c-ink-dim: 148 163 184;
-    --c-ink-mute: 100 116 139;
+    --c-ink-mute: 148 158 173;
     --c-go: 16 185 129;
     --c-go-ink: 52 211 153;
     --c-warn: 245 158 11;
@@ -59,7 +59,7 @@
     --c-manual: 168 85 247;
     --c-manual-ink: 192 132 252;
     --grid-line: rgba(255, 255, 255, 0.035);
-    --shadow-panel: 0 4px 14px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+    --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.16);
     --shadow-pop: 0 24px 48px -12px rgba(0, 0, 0, 0.75);
 
     /* Digital twin SVG colors (Dark) */
@@ -133,7 +133,7 @@
   }
 
   .label {
-    @apply text-2xs font-semibold uppercase tracking-wider text-ink-mute;
+    @apply text-xs font-medium tracking-normal text-ink-dim;
   }
 
   .grid-bg {
@@ -142,11 +142,9 @@
     background-size: 24px 24px;
   }
 
-  /* Glassmorphism panel subtle style */
+  /* Opaque surfaces keep dense operational data readable. */
   .glass-panel {
-    background-color: rgb(var(--c-surface) / 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: rgb(var(--c-surface));
   }
 }
 

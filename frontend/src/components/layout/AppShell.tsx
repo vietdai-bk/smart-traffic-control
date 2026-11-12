@@ -80,7 +80,7 @@ function IntersectionPicker() {
     <div ref={ref} className="relative min-w-0 flex-1 md:flex-none">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-full min-w-0 md:max-w-[440px] items-center gap-2.5 rounded-ctl border border-line/80 bg-surface px-3 text-left shadow-sm transition-all hover:border-auto/60 hover:shadow"
+        className="flex h-10 w-full min-w-0 md:max-w-[440px] items-center gap-2.5 rounded-ctl border border-line/80 bg-surface px-3 text-left transition-colors hover:border-auto/60"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -99,7 +99,7 @@ function IntersectionPicker() {
         <ChevronDown className={clsx("h-4 w-4 shrink-0 text-ink-mute transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <ul role="listbox" className="absolute left-0 top-12 z-50 w-[460px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-panel border border-line bg-surface/98 p-1.5 shadow-pop backdrop-blur-md">
+        <ul role="listbox" className="absolute left-0 top-12 z-50 w-[460px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-panel border border-line bg-surface p-1.5 shadow-pop">
           <div className="px-2.5 py-1 text-2xs font-bold uppercase tracking-wider text-ink-mute">
             Danh sách nút giao trực tuyến
           </div>
@@ -242,7 +242,6 @@ function MoreSheet({ open, onClose, items, alertBadge }: { open: boolean; onClos
                 <span className="text-ink-mute">{n.icon}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block">{n.label}</span>
-                  <span className="block truncate text-2xs font-normal text-ink-mute">{n.hint}</span>
                 </span>
                 {n.to === "/alerts" && <AlertCount n={alertBadge} />}
               </NavLink>
@@ -313,15 +312,15 @@ export function AppShell() {
               title={n.label}
               className={({ isActive }) =>
                 clsx(
-                  "group relative flex items-start gap-3 rounded-ctl px-3 py-2.5 transition-all max-lg:flex-col max-lg:items-center max-lg:gap-1 max-lg:px-1",
-                  isActive ? "bg-auto/10 font-semibold text-auto shadow-sm" : "font-medium text-ink-dim hover:bg-panel hover:text-ink",
+                  "group relative flex items-center gap-3 rounded-ctl px-3 py-2.5 transition-all max-lg:flex-col max-lg:items-center max-lg:gap-1 max-lg:px-1",
+                  isActive ? "bg-panel font-semibold text-auto-ink" : "font-medium text-ink-dim hover:bg-panel hover:text-ink",
                 )
               }
             >
               {({ isActive }) => (
                 <>
                   {isActive && <span className="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full bg-auto" />}
-                  <span className={clsx("relative mt-0.5 transition-colors", isActive ? "text-auto" : "text-ink-mute group-hover:text-ink")}>
+                  <span className={clsx("relative transition-colors", isActive ? "text-auto" : "text-ink-mute group-hover:text-ink")}>
                     {n.icon}
                     {n.to === "/alerts" && totalAlertBadge > 0 && (
                       <span className="absolute -right-2 -top-2 lg:hidden"><AlertCount n={totalAlertBadge} /></span>
@@ -333,7 +332,6 @@ export function AppShell() {
                       <span>{n.label}</span>
                       {n.to === "/alerts" && <AlertCount n={totalAlertBadge} />}
                     </span>
-                    <span className="block truncate text-2xs text-ink-mute">{n.hint}</span>
                   </span>
                 </>
               )}
@@ -358,7 +356,7 @@ export function AppShell() {
 
       {/* ---------- Vùng làm việc ---------- */}
       <div className="flex min-h-screen min-w-0 flex-col md:pl-[72px] lg:pl-[240px]">
-        <header ref={headerRef} className="no-print sticky top-0 z-40 border-b border-line/80 bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-colors">
+        <header ref={headerRef} className="no-print sticky top-0 z-40 border-b border-line/80 bg-surface pt-[env(safe-area-inset-top)] transition-colors">
           <div className="flex items-center gap-2 px-3 py-2 md:gap-3 md:px-4">
             <div className="md:hidden"><Brand compact /></div>
             <IntersectionPicker />
@@ -443,7 +441,7 @@ export function AppShell() {
 
       {/* ---------- Thanh điều hướng dưới (điện thoại) ---------- */}
       <nav
-        className="no-print fixed inset-x-0 bottom-0 z-50 grid border-t border-line/80 bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="no-print fixed inset-x-0 bottom-0 z-50 grid border-t border-line/80 bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
         style={{ gridTemplateColumns: `repeat(${tabNav.length + 1}, minmax(0, 1fr))` }}
         aria-label="Điều hướng di động"
       >

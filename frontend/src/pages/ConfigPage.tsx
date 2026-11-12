@@ -166,7 +166,8 @@ function IntersectionTab({ list, reload, selected, setSelected }: { list: Inters
       <Panel
         title="Danh sách nút giao"
         icon={<TrafficCone className="h-4 w-4" />}
-        bodyClassName="p-1.5"
+        className="self-start xl:sticky xl:top-[calc(var(--header-h,57px)+16px)] xl:max-h-[calc(100dvh-var(--header-h,57px)-32px)] [&>header]:shrink-0"
+        bodyClassName="p-1.5 xl:overflow-y-auto xl:overscroll-contain"
         actions={manage && <Button size="sm" variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setCreating(true)}>Thêm</Button>}
       >
         <ul className="space-y-1">
@@ -576,9 +577,6 @@ export default function ConfigPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/80 bg-surface p-4 shadow-panel">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-ink">Quản trị Nút giao, Camera & Tham số An toàn</h1>
-          <p className="mt-0.5 text-xs font-medium text-ink-mute">
-            Cấu hình toạ độ nút giao, gắn luồng camera 4 hướng tiếp cận, vẽ vùng nhận diện ROI và thiết lập giới hạn Webster.
-          </p>
         </div>
       </div>
       <Tabs

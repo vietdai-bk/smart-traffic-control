@@ -29,9 +29,9 @@ export default {
         "sm": ["0.8125rem", { lineHeight: "1.25rem" }],
       },
       borderRadius: {
-        panel: "10px",
-        card: "12px",
-        ctl: "7px",
+        panel: "8px",
+        card: "8px",
+        ctl: "6px",
         tag: "4px",
       },
       boxShadow: {
