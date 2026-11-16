@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.config import settings
 from app.core.deps import CurrentUser, client_ip, get_current_user
+from app.core.login_guard import login_guard
 from app.core.rbac import perms_of
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
@@ -19,43 +20,54 @@ from app.schemas.user import ChangePassword, LoginRequest, LoginResponse, MeResp
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
+# Hash giả để tên không tồn tại vẫn tốn thời gian bcrypt như tên có thật (chống dò qua thời gian phản hồi)
+_DUMMY_HASH = hash_password("stcs-timing-equaliser")
+_BAD_CREDENTIALS = "Sai tên đăng nhập hoặc mật khẩu"
+
+
+def _blocked(seconds: float) -> HTTPException:
+    mins = max(1, int(seconds // 60) + (1 if seconds % 60 else 0))
+    return HTTPException(423, f"Đăng nhập tạm bị chặn do sai nhiều lần. Thử lại sau {mins} phút.")
+
+
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    """Phản hồi cho tên không tồn tại và sai mật khẩu là như nhau (mã, nội dung, thời gian),
+    nên không dò được tài khoản nào có thật. Khoá tạm theo cặp (tên, IP) — xem app.core.login_guard."""
     ip = client_ip(request)
     username = body.username.strip()
-    user = db.query(User).filter(User.username == username).first()
-    now = utcnow()
-    if user is None:
-        audit(db, "AUTH", "LOGIN_FAILED", f"Đăng nhập thất bại: tài khoản '{username}' không tồn tại",
+    wait = login_guard.blocked_for(username, ip)
+    if wait > 0:
+        audit(db, "AUTH", "LOGIN_BLOCKED", "Đăng nhập bị từ chối: đang khoá tạm do sai nhiều lần từ IP này",
               username=username, ip=ip, result="FAILURE")
-        raise HTTPException(401, "Sai tên đăng nhập hoặc mật khẩu")
+        raise _blocked(wait)
+
+    user = db.query(User).filter(User.username == username).first()
+    ok = verify_password(body.password, user.password_hash if user else _DUMMY_HASH)
+    now = utcnow()
+    if not ok or user is None:
+        n, locked_s = login_guard.record_failure(username, ip)
+        if user is not None:
+            user.failed_attempts += 1  # chỉ để hiển thị cho Quản trị viên
+            if locked_s:
+                user.locked_until = now + timedelta(seconds=locked_s)
+            db.commit()
+        reason = "tài khoản không tồn tại" if user is None else "sai mật khẩu"
+        audit(db, "AUTH", "ACCOUNT_TEMP_LOCKED" if locked_s else "LOGIN_FAILED",
+              f"Đăng nhập thất bại: {reason} (lần {n} từ IP này)"
+              + (f" — khoá tạm {settings.lockout_minutes} phút với IP này" if locked_s else ""),
+              username=username, role=user.role if user else None, ip=ip, result="FAILURE")
+        if locked_s:
+            raise _blocked(locked_s)
+        raise HTTPException(401, _BAD_CREDENTIALS)
+
+    # Chỉ báo "tài khoản bị khoá" cho người đã nhập đúng mật khẩu
     if not user.is_active:
         audit(db, "AUTH", "LOGIN_BLOCKED", "Đăng nhập bị từ chối: tài khoản đã bị khoá", username=username,
               role=user.role, ip=ip, result="FAILURE")
         raise HTTPException(403, "Tài khoản đã bị khoá. Vui lòng liên hệ Quản trị viên.")
-    if user.locked_until and user.locked_until > now:
-        mins = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
-        audit(db, "AUTH", "LOGIN_BLOCKED", "Đăng nhập bị từ chối: đang khoá tạm do sai mật khẩu nhiều lần",
-              username=username, role=user.role, ip=ip, result="FAILURE")
-        raise HTTPException(423, f"Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau {mins} phút.")
-    if not verify_password(body.password, user.password_hash):
-        user.failed_attempts += 1
-        remaining = settings.max_failed_logins - user.failed_attempts
-        if remaining <= 0:
-            user.locked_until = now + timedelta(minutes=settings.lockout_minutes)
-            user.failed_attempts = 0
-            db.commit()
-            audit(db, "AUTH", "ACCOUNT_TEMP_LOCKED",
-                  f"Khoá tạm {settings.lockout_minutes} phút sau {settings.max_failed_logins} lần sai mật khẩu",
-                  username=username, role=user.role, ip=ip, result="FAILURE")
-            raise HTTPException(423, f"Sai mật khẩu {settings.max_failed_logins} lần. "
-                                     f"Tài khoản bị khoá tạm {settings.lockout_minutes} phút.")
-        db.commit()
-        audit(db, "AUTH", "LOGIN_FAILED",
-              f"Sai mật khẩu (lần {user.failed_attempts}/{settings.max_failed_logins})",
-              username=username, role=user.role, ip=ip, result="FAILURE")
-        raise HTTPException(401, f"Sai tên đăng nhập hoặc mật khẩu. Còn {remaining} lần thử trước khi bị khoá tạm.")
 
+    login_guard.record_success(username, ip)
     user.failed_attempts = 0
     user.locked_until = None
     user.last_login_at = now

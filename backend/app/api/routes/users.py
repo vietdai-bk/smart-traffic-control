@@ -6,6 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.login_guard import login_guard
 from app.core.deps import CurrentUser, client_ip, require
 from app.core.rbac import ROLE_LABELS, ROLE_PERMISSIONS, Perm, Role
 from app.core.security import hash_password
@@ -73,6 +74,7 @@ def update_user(user_id: int, body: UserUpdate, request: Request, db: Session = 
     if data.get("is_active") is True:
         user.failed_attempts = 0
         user.locked_until = None
+        login_guard.clear_user(user.username)
     # Đặt lại mật khẩu, đổi vai trò hoặc khoá tài khoản → đăng xuất mọi phiên hiện có của người đó
     if "password" in changes or "role" in changes or changes.get("is_active", {}).get("to") is False:
         user.revoke_tokens()

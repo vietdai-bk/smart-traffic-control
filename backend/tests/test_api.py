@@ -26,10 +26,13 @@ def tokens(client):
 
 
 def test_login_errors(client):
-    assert login(client, "nobody", "x").status_code == 401
+    nobody = login(client, "nobody", "x")
+    wrong = login(client, "manager", "wrong")
+    # Không phân biệt được tên không tồn tại với sai mật khẩu
+    assert nobody.status_code == wrong.status_code == 401
+    assert nobody.json() == wrong.json()
+    assert login(client, "operator2", "wrong").status_code == 401        # khoá nhưng sai mật khẩu: không lộ
     assert login(client, "operator2", "operator123").status_code == 403  # tài khoản bị khoá
-    r = login(client, "manager", "wrong")
-    assert r.status_code == 401 and "Còn" in r.json()["detail"]
 
 
 def test_temporary_lockout_after_failed_attempts(client, tokens):
