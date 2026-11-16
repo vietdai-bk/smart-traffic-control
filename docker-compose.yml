@@ -11,6 +11,8 @@ services:
       STCS_TRUSTED_PROXIES: "172.16.0.0/12,192.168.0.0/16,10.0.0.0/8"
       # 1 = trang đăng nhập hiện tài khoản mẫu và mật khẩu (chỉ dùng khi demo)
       STCS_DEMO_MODE: "${STCS_DEMO_MODE:-0}"
+      # Khi tắt demo, mật khẩu tài khoản khởi tạo được sinh ngẫu nhiên và ghi vào file này
+      STCS_INITIAL_CREDENTIALS_FILE: "/data/initial_credentials.txt"
       STCS_CORS_ORIGINS: "http://localhost:8080"
       STCS_DATABASE_URL: "sqlite:////data/stcs.db"
       # LLM Groq — đặt trong file .env ở thư mục gốc (docker compose tự đọc)

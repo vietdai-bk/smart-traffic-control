@@ -135,7 +135,7 @@ Màn hình đăng nhập có nút **đăng nhập nhanh**.
 | Người xem dữ liệu | `viewer` | `viewer123` | Thống kê, cảnh báo, hỏi trợ lý — không xem video (NFR15) |
 | (bị khoá) | `operator2` | `operator123` | Kiểm thử thông báo "tài khoản bị khoá" |
 
-> ⚠️ Đây là tài khoản mẫu cho môi trường demo. Khi triển khai thật: đổi mật khẩu, đặt `STCS_JWT_SECRET` mạnh.
+> ⚠️ Mật khẩu trên chỉ dùng khi `STCS_DEMO_MODE=1` (mặc định khi chạy local). Khi tắt demo (mặc định trong Docker), lần khởi tạo đầu sinh mật khẩu ngẫu nhiên và ghi vào `STCS_INITIAL_CREDENTIALS_FILE` (mặc định `backend/data/initial_credentials.txt`; Docker: `docker compose exec backend cat /data/initial_credentials.txt`). Đăng nhập, đổi mật khẩu rồi xoá file này. Nếu CSDL cũ vẫn còn mật khẩu mẫu, backend sẽ cảnh báo khi khởi động.
 
 ## 6. Kịch bản kiểm thử gợi ý
 

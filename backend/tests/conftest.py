@@ -6,6 +6,7 @@ os.environ["STCS_DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
 os.environ["STCS_SEED"] = "1"
 os.environ["STCS_FRONTEND_DIST"] = os.path.join(_tmp, "no-dist")
 os.environ["STCS_NO_DOTENV"] = "1"
+os.environ["STCS_DEMO_MODE"] = "1"  # test đăng nhập bằng mật khẩu mẫu
 os.environ["STCS_JWT_SECRET_FILE"] = os.path.join(_tmp, ".jwt_secret")
 
 import pytest  # noqa: E402

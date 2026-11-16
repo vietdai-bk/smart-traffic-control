@@ -7,14 +7,17 @@ Lịch sử được chia làm hai giai đoạn để phục vụ đối sánh U
 from __future__ import annotations
 
 import logging
+import os
 import random
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
+from app.core.config import BASE_DIR, settings
 from app.core.rbac import Role
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.models import (
     Alert,
     AuditLog,
@@ -72,26 +75,74 @@ def _tod(local: datetime) -> float:
     return TOD_PROFILE[i] * (1 - f) + TOD_PROFILE[(i + 1) % 24] * f
 
 
+def credentials_file() -> str:
+    return os.environ.get("STCS_INITIAL_CREDENTIALS_FILE", str(BASE_DIR / "data" / "initial_credentials.txt"))
+
+
+def _initial_password(demo_pw: str, username: str, generated: list[tuple[str, str]]) -> str:
+    """Chế độ demo: mật khẩu mẫu công khai. Ngoài demo: mật khẩu ngẫu nhiên, ghi lại để báo cho quản trị viên."""
+    if settings.demo_mode:
+        return demo_pw
+    pw = secrets.token_urlsafe(12)
+    generated.append((username, pw))
+    return pw
+
+
+def _write_credentials(generated: list[tuple[str, str]]) -> None:
+    """Ghi mật khẩu khởi tạo vào file quyền 600 (không in mật khẩu ra log)."""
+    if not generated:
+        return
+    path = credentials_file()
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, "a", encoding="utf-8") as fh:
+        fh.write(f"# Mật khẩu khởi tạo STCS — {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC. "
+                 "Đăng nhập, đổi mật khẩu, rồi xoá file này.\n")
+        for username, pw in generated:
+            fh.write(f"{username}\t{pw}\n")
+    log.warning("Đã tạo %d tài khoản với mật khẩu ngẫu nhiên — xem %s rồi xoá file sau khi đổi mật khẩu",
+                len(generated), path)
+
+
+def warn_demo_passwords(db: Session) -> list[str]:
+    """Ngoài chế độ demo: cảnh báo tài khoản đang hoạt động vẫn dùng mật khẩu mẫu công khai."""
+    if settings.demo_mode:
+        return []
+    weak = []
+    for username, pw, *_ in USERS:
+        u = db.query(User).filter(User.username == username).first()
+        if u and u.is_active and verify_password(pw, u.password_hash):
+            weak.append(username)
+    if weak:
+        log.warning("Tài khoản vẫn dùng mật khẩu mẫu công khai: %s — đổi ngay (STCS_DEMO_MODE=0)", ", ".join(weak))
+    return weak
+
+
 def ensure_default_users(db: Session) -> None:
     """Bổ sung tài khoản mẫu mới (vd. vai trò VIEWER) cho CSDL đã seed từ phiên bản trước."""
+    generated: list[tuple[str, str]] = []
     for username, pw, full, role, email, active in USERS:
         if db.query(User).filter(User.username == username).first() is None:
             db.add(User(username=username, full_name=full, role=role.value, email=email,
-                        password_hash=hash_password(pw), is_active=active))
+                        password_hash=hash_password(_initial_password(pw, username, generated)), is_active=active))
     db.commit()
+    _write_credentials(generated)
 
 
 def seed_if_empty(db: Session) -> bool:
     if db.query(User).count() > 0:
         ensure_default_users(db)
+        warn_demo_passwords(db)
         return False
     log.info("Khởi tạo dữ liệu mẫu…")
     rng = random.Random(2024)
     now = datetime.now(timezone.utc)
 
     users = []
+    generated: list[tuple[str, str]] = []
     for username, pw, full, role, email, active in USERS:
-        u = User(username=username, full_name=full, role=role.value, email=email, password_hash=hash_password(pw),
+        u = User(username=username, full_name=full, role=role.value, email=email,
+                 password_hash=hash_password(_initial_password(pw, username, generated)),
                  is_active=active, phone=f"09{rng.randint(10000000, 99999999)}",
                  created_at=now - timedelta(days=30), last_login_at=now - timedelta(hours=rng.randint(2, 50)))
         db.add(u)
@@ -117,6 +168,7 @@ def seed_if_empty(db: Session) -> bool:
     _seed_history(db, inters, rng, now)
     _seed_events(db, inters, rng, now)
     db.commit()
+    _write_credentials(generated)
     log.info("Đã seed dữ liệu mẫu")
     return True
 
