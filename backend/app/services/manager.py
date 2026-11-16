@@ -7,6 +7,7 @@ import time
 
 from sqlalchemy.orm import selectinload
 
+from app.core.concurrency import runtime_lock
 from app.core.config import settings
 from app.core.events import bus
 from app.db.session import session_scope
@@ -42,6 +43,7 @@ class IntersectionManager:
         log.info("Đã khởi tạo %d nút giao", len(self.runtimes))
 
     async def start(self) -> None:
+        bus.bind_loop()
         self.load_all()
         self._running = True
         self._task = asyncio.create_task(self._loop(), name="stcs-runtime-loop")
@@ -73,6 +75,10 @@ class IntersectionManager:
                 .first()
             )
             cfg = IntersectionConfig.from_model(row) if row and row.is_active else None
+        with runtime_lock:
+            self._apply_reload(intersection_id, cfg)
+
+    def _apply_reload(self, intersection_id: int, cfg: IntersectionConfig | None) -> None:
         rt = self.runtimes.get(intersection_id)
         if cfg is None:
             if rt:
@@ -85,9 +91,10 @@ class IntersectionManager:
             rt.apply_config(cfg)
 
     def remove(self, intersection_id: int) -> None:
-        rt = self.runtimes.pop(intersection_id, None)
-        if rt:
-            rt.close()
+        with runtime_lock:
+            rt = self.runtimes.pop(intersection_id, None)
+            if rt:
+                rt.close()
 
     # ------------------------------------------------------------ loop
     async def _loop(self) -> None:
@@ -97,17 +104,19 @@ class IntersectionManager:
             t0 = time.time()
             dt = min(max(t0 - last, 0.0), 0.25)
             last = t0
-            for rt in list(self.runtimes.values()):
-                try:
-                    rt.tick(dt, t0)
-                except Exception:
-                    # Tự phục hồi: lỗi một tick không làm dừng hệ thống (NFR13)
-                    self.tick_errors += 1
-                    log.exception("Lỗi tick nút giao %s", rt.id)
-            self._t_summary += dt
-            if self._t_summary >= 1.0:
-                self._t_summary = 0.0
-                bus.publish({"type": "summary", "data": self.summary()}, droppable=True)
+            # Giữ khoá trong cả tick: lệnh từ route (threadpool) không thể chen vào giữa bước chuyển FSM
+            with runtime_lock:
+                for rt in list(self.runtimes.values()):
+                    try:
+                        rt.tick(dt, t0)
+                    except Exception:
+                        # Tự phục hồi: lỗi một tick không làm dừng hệ thống (NFR13)
+                        self.tick_errors += 1
+                        log.exception("Lỗi tick nút giao %s", rt.id)
+                self._t_summary += dt
+                if self._t_summary >= 1.0:
+                    self._t_summary = 0.0
+                    bus.publish({"type": "summary", "data": self.summary()}, droppable=True)
             elapsed = time.time() - t0
             self.loop_ms = 0.9 * self.loop_ms + 0.1 * elapsed * 1000.0
             await asyncio.sleep(max(0.0, period - elapsed))

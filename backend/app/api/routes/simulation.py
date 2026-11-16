@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.concurrency import with_runtime_lock
 from app.core.deps import CurrentUser, client_ip, require
 from app.core.rbac import Perm
 from app.db.session import get_db
@@ -56,6 +57,7 @@ def scenarios(_: CurrentUser = Depends(require(Perm.LIVE_VIEW))):
 
 
 @router.post("/{iid}/surge")
+@with_runtime_lock
 def surge(iid: int, body: SurgeRequest, request: Request, db: Session = Depends(get_db),
           cur: CurrentUser = Depends(require(Perm.SIM_CONTROL))):
     rt = _rt(iid)
@@ -68,6 +70,7 @@ def surge(iid: int, body: SurgeRequest, request: Request, db: Session = Depends(
 
 
 @router.post("/{iid}/scenario")
+@with_runtime_lock
 def scenario(iid: int, body: ScenarioRequest, request: Request, db: Session = Depends(get_db),
              cur: CurrentUser = Depends(require(Perm.SIM_CONTROL))):
     rt = _rt(iid)
@@ -78,6 +81,7 @@ def scenario(iid: int, body: ScenarioRequest, request: Request, db: Session = De
 
 
 @router.post("/{iid}/camera")
+@with_runtime_lock
 def camera_fault(iid: int, body: CameraFaultRequest, request: Request, db: Session = Depends(get_db),
                  cur: CurrentUser = Depends(require(Perm.SIM_CONTROL))):
     rt = _rt(iid)
@@ -95,6 +99,7 @@ def camera_fault(iid: int, body: CameraFaultRequest, request: Request, db: Sessi
 
 
 @router.post("/{iid}/controller")
+@with_runtime_lock
 def controller_fault(iid: int, body: FaultRequest, request: Request, db: Session = Depends(get_db),
                      cur: CurrentUser = Depends(require(Perm.SIM_CONTROL))):
     rt = _rt(iid)
@@ -105,6 +110,7 @@ def controller_fault(iid: int, body: FaultRequest, request: Request, db: Session
 
 
 @router.post("/{iid}/vision")
+@with_runtime_lock
 def vision_fault(iid: int, body: FaultRequest, request: Request, db: Session = Depends(get_db),
                  cur: CurrentUser = Depends(require(Perm.SIM_CONTROL))):
     rt = _rt(iid)
@@ -115,6 +121,7 @@ def vision_fault(iid: int, body: FaultRequest, request: Request, db: Session = D
 
 
 @router.post("/{iid}/reset")
+@with_runtime_lock
 def reset(iid: int, request: Request, db: Session = Depends(get_db),
           cur: CurrentUser = Depends(require(Perm.SIM_CONTROL))):
     rt = _rt(iid)

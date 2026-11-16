@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from app.core.audit import audit
+from app.core.concurrency import runtime_lock
 from app.core.config import settings
 from app.core.events import bus
 from app.db.session import session_scope
@@ -301,14 +302,15 @@ class SupervisorService:
         while self._running:
             await asyncio.sleep(2.0)
             now = time.time()
-            for rt in list(manager.runtimes.values()):
-                try:
-                    self._expire_pending(rt, now)
-                    trigger = self._should_run(rt, now)
-                    if trigger:
-                        asyncio.create_task(self.run(rt, trigger))
-                except Exception:  # pragma: no cover
-                    log.exception("LLM supervisor loop lỗi (nút %s)", rt.id)
+            with runtime_lock:
+                for rt in list(manager.runtimes.values()):
+                    try:
+                        self._expire_pending(rt, now)
+                        trigger = self._should_run(rt, now)
+                        if trigger:
+                            asyncio.create_task(self.run(rt, trigger))
+                    except Exception:  # pragma: no cover
+                        log.exception("LLM supervisor loop lỗi (nút %s)", rt.id)
 
     def _should_run(self, rt: "IntersectionRuntime", now: float) -> str | None:
         st = rt.llm
@@ -381,6 +383,18 @@ class SupervisorService:
             st.running = False
 
         decision_id = self._save(row)
+        # Phần sau await: áp dụng lên runtime dưới khoá (không có await bên trong)
+        with runtime_lock:
+            return self._finish_run(rt, row, proposal, decision_id)
+
+    def _finish_run(self, rt: "IntersectionRuntime", row: LlmDecision, proposal: dict | None,
+                    decision_id: int | None) -> dict:
+        st = rt.llm
+        if proposal and row.status == "APPLIED" and rt.fsm.mode.value != "AUTO":
+            # Chế độ có thể đã đổi trong lúc chờ LLM trả lời
+            row.status = "SKIPPED"
+            self._set_status(decision_id, "SKIPPED", None)
+            proposal = None
         now = time.time()
         if proposal and row.status == "APPLIED":
             st.apply(proposal, "LLM", decision_id, now)

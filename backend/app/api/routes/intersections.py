@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import audit
+from app.core.concurrency import with_runtime_lock
 from app.core.deps import CurrentUser, client_ip, require, require_any
 from app.core.rbac import Perm
 from app.db.session import get_db
@@ -108,6 +109,7 @@ def delete_intersection(iid: int, request: Request, db: Session = Depends(get_db
 
 
 @router.post("/{iid}/controller/ping")
+@with_runtime_lock
 def ping_controller(iid: int, request: Request, db: Session = Depends(get_db),
                     cur: CurrentUser = Depends(require(Perm.CONFIG_VIEW))):
     rt = manager.get(iid)

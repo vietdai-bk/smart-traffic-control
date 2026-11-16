@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.control_engine.phases import DIRECTIONS, MODE_LABELS, PHASES, Mode, conflict_matrix
 from app.core.audit import audit
+from app.core.concurrency import with_runtime_lock
 from app.core.deps import CurrentUser, client_ip, require
 from app.core.events import bus
 from app.core.rbac import Perm
@@ -70,6 +71,7 @@ def state(iid: int, _: CurrentUser = Depends(require(Perm.LIVE_VIEW))):
 
 
 @router.post("/{iid}/command", response_model=CommandResultOut)
+@with_runtime_lock
 def command(iid: int, body: SignalCommandRequest, request: Request, db: Session = Depends(get_db),
             cur: CurrentUser = Depends(require(Perm.SIGNAL_CONTROL))):
     _require_confirm(body.confirm)
@@ -88,6 +90,7 @@ def command(iid: int, body: SignalCommandRequest, request: Request, db: Session 
 
 
 @router.post("/{iid}/mode", response_model=CommandResultOut)
+@with_runtime_lock
 def set_mode(iid: int, body: ModeRequest, request: Request, db: Session = Depends(get_db),
              cur: CurrentUser = Depends(require(Perm.SIGNAL_MODE))):
     _require_confirm(body.confirm)
@@ -104,6 +107,7 @@ def set_mode(iid: int, body: ModeRequest, request: Request, db: Session = Depend
 
 
 @router.post("/{iid}/recover", response_model=CommandResultOut)
+@with_runtime_lock
 def recover(iid: int, body: RecoverRequest, request: Request, db: Session = Depends(get_db),
             cur: CurrentUser = Depends(require(Perm.SIGNAL_MODE))):
     _require_confirm(body.confirm)

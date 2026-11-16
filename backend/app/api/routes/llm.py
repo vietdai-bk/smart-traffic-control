@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import audit
 from app.core.config import settings
+from app.core.concurrency import with_runtime_lock
 from app.core.deps import CurrentUser, client_ip, get_current_user, require
 from app.core.rbac import Perm
 from app.db.session import get_db
@@ -51,6 +52,7 @@ class SupervisorModeIn(BaseModel):
 
 
 @router.post("/{iid}/mode")
+@with_runtime_lock
 def set_supervisor_mode(iid: int, body: SupervisorModeIn, request: Request, db: Session = Depends(get_db),
                         cur: CurrentUser = Depends(require(Perm.LLM_SUPERVISE))):
     if body.mode == "AUTONOMOUS" and not body.confirm:
@@ -83,6 +85,7 @@ async def run_now(iid: int, cur: CurrentUser = Depends(require(Perm.LLM_SUPERVIS
 
 
 @router.post("/{iid}/decisions/{did}/approve")
+@with_runtime_lock
 def approve(iid: int, did: int, request: Request, db: Session = Depends(get_db),
             cur: CurrentUser = Depends(require(Perm.LLM_SUPERVISE))):
     rt = _rt(iid)
@@ -97,6 +100,7 @@ def approve(iid: int, did: int, request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/{iid}/decisions/{did}/reject")
+@with_runtime_lock
 def reject(iid: int, did: int, request: Request, db: Session = Depends(get_db),
            cur: CurrentUser = Depends(require(Perm.LLM_SUPERVISE))):
     rt = _rt(iid)
@@ -110,6 +114,7 @@ def reject(iid: int, did: int, request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/{iid}/reset")
+@with_runtime_lock
 def reset(iid: int, cur: CurrentUser = Depends(require(Perm.LLM_SUPERVISE))):
     rt = _rt(iid)
     rt.llm.reset(f"Đặt lại về cân bằng bởi {cur.username}")
@@ -156,6 +161,7 @@ async def assistant_chat(body: ChatIn, cur: CurrentUser = Depends(require(Perm.A
 
 
 @router.post("/assistant/actions/{aid}/confirm")
+@with_runtime_lock
 def confirm(aid: str, cur: CurrentUser = Depends(require(Perm.ASSISTANT_USE))):
     try:
         return assistant.confirm_action(aid, cur)
@@ -166,6 +172,7 @@ def confirm(aid: str, cur: CurrentUser = Depends(require(Perm.ASSISTANT_USE))):
 
 
 @router.post("/assistant/actions/{aid}/cancel")
+@with_runtime_lock
 def cancel(aid: str, cur: CurrentUser = Depends(require(Perm.ASSISTANT_USE))):
     assistant.cancel_action(aid, cur)
     return {"ok": True}
