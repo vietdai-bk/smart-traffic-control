@@ -116,3 +116,9 @@ Kế hoạch: chỉ chỉnh CSS của panel danh sách trong ConfigPage. Ở b�
 Kế hoạch trước sửa: trang đăng nhập đang công khai tên đăng nhập và mật khẩu của tài khoản mẫu kèm nút đăng nhập nhanh, nguy hiểm khi triển khai thật. Thêm cờ `STCS_DEMO_MODE` ở backend (mặc định bật khi chạy local, tắt trong Docker) và endpoint công khai `GET /api/system/public`; frontend chỉ hiện khối tài khoản mẫu khi backend xác nhận đang demo. Ghi chú "sai 5 lần khoá tài khoản" không còn đúng vì khoá tạm đã chuyển sang theo cặp tài khoản + địa chỉ mạng. Giữ nguyên việc ẩn Viewer.
 
 Kết quả: khối "Đăng nhập nhanh tài khoản mẫu" chỉ hiện khi `STCS_DEMO_MODE=1`; mặc định frontend ẩn cho tới khi backend trả về. Ghi chú bảo mật luôn hiện, nội dung mới: sai mật khẩu 5 lần, tài khoản đó tạm bị chặn đăng nhập 5 phút từ địa chỉ mạng này. TypeScript, build production và test backend đạt; đã kiểm tra trên trình duyệt ở cả hai chế độ.
+
+## 2026-11-16 — Giao diện sáng làm mặc định
+
+Kế hoạch trước sửa: đổi theme mặc định từ tối sang sáng. Bản trước tự ghi "dark" vào localStorage ngay lần mở đầu tiên, nên chỉ đổi giá trị mặc định thì người đã từng mở web vẫn thấy giao diện tối. Chỉ lưu khi người dùng tự đổi theme, dùng khoá lưu mới `stcs.theme.choice` và bỏ qua khoá cũ `stcs.theme`.
+
+Kết quả: mở lần đầu (kể cả trình duyệt còn khoá cũ = dark) hiển thị giao diện sáng; người dùng bấm đổi sang tối thì lựa chọn được giữ sau khi tải lại. Đọc/ghi localStorage được bọc try/catch. TypeScript và build production đạt; đã kiểm tra trên trình duyệt, không có lỗi JS.
