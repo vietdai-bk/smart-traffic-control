@@ -4,7 +4,9 @@ services:
     container_name: stcs-backend
     environment:
       STCS_PORT: "8010"
-      STCS_JWT_SECRET: "${STCS_JWT_SECRET:-change-this-secret-in-production}"
+      # Bỏ trống → backend tự sinh secret ngẫu nhiên và lưu trong volume /data
+      STCS_JWT_SECRET: "${STCS_JWT_SECRET:-}"
+      STCS_JWT_SECRET_FILE: "/data/.jwt_secret"
       STCS_CORS_ORIGINS: "http://localhost:8080"
       STCS_DATABASE_URL: "sqlite:////data/stcs.db"
       # LLM Groq — đặt trong file .env ở thư mục gốc (docker compose tự đọc)

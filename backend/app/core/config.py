@@ -1,7 +1,9 @@
 """Cấu hình tập trung (NFR10). Đọc từ biến môi trường, có giá trị mặc định an toàn cho môi trường demo."""
 from __future__ import annotations
 
+import logging
 import os
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -28,6 +30,56 @@ def _env(name: str, default: str) -> str:
     return os.environ.get(name, default)
 
 
+_log = logging.getLogger("stcs.config")
+
+# Các giá trị mẫu từng nằm công khai trong repo — coi như không có secret
+_KNOWN_WEAK_SECRETS = frozenset({
+    "stcs-dev-secret-change-me-in-production",
+    "change-this-secret-in-production",
+    "doi-chuoi-bi-mat-nay-truoc-khi-trien-khai",
+    "changeme", "secret",
+})
+MIN_JWT_SECRET_LEN = 32
+
+
+def _is_weak_secret(value: str) -> bool:
+    return len(value) < MIN_JWT_SECRET_LEN or value.lower() in _KNOWN_WEAK_SECRETS
+
+
+def _resolve_jwt_secret() -> str:
+    """Lấy JWT secret an toàn.
+
+    - STCS_JWT_SECRET đặt và đủ mạnh → dùng.
+    - STCS_JWT_SECRET đặt nhưng yếu (giá trị mẫu / < 32 ký tự) → từ chối khởi động.
+    - Không đặt → sinh ngẫu nhiên một lần và lưu vào STCS_JWT_SECRET_FILE (mặc định backend/data/.jwt_secret,
+      quyền 600) để phiên đăng nhập vẫn hợp lệ sau khi khởi động lại.
+    """
+    value = os.environ.get("STCS_JWT_SECRET", "").strip()
+    if value:
+        if _is_weak_secret(value):
+            raise RuntimeError(
+                "STCS_JWT_SECRET quá yếu hoặc là giá trị mẫu công khai. Dùng chuỗi ngẫu nhiên >= "
+                f"{MIN_JWT_SECRET_LEN} ký tự, ví dụ: python -c \"import secrets;print(secrets.token_urlsafe(48))\" "
+                "— hoặc bỏ trống để hệ thống tự sinh."
+            )
+        return value
+
+    path = Path(_env("STCS_JWT_SECRET_FILE", str(BASE_DIR / "data" / ".jwt_secret")))
+    try:
+        stored = path.read_text(encoding="utf-8").strip()
+        if not _is_weak_secret(stored):
+            return stored
+    except FileNotFoundError:
+        pass
+    generated = secrets.token_urlsafe(48)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(generated)
+    _log.warning("STCS_JWT_SECRET chưa được đặt — đã sinh secret ngẫu nhiên và lưu tại %s", path)
+    return generated
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "STCS — Smart Traffic Control System"
@@ -35,7 +87,7 @@ class Settings:
     database_url: str = field(
         default_factory=lambda: _env("STCS_DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'stcs.db'}")
     )
-    jwt_secret: str = field(default_factory=lambda: _env("STCS_JWT_SECRET", "stcs-dev-secret-change-me-in-production"))
+    jwt_secret: str = field(default_factory=_resolve_jwt_secret, repr=False)
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = field(default_factory=lambda: int(_env("STCS_JWT_EXPIRE_MINUTES", "480")))
     cors_origins: tuple[str, ...] = field(

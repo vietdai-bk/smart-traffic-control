@@ -108,7 +108,7 @@ hiện tại; FAILSAFE huỷ mọi chiến lược LLM.
 ### Cách 3 — Docker
 
 ```bash
-cp .env.example .env  # điền GROQ_API_KEY và đổi STCS_JWT_SECRET
+cp .env.example .env  # điền GROQ_API_KEY (STCS_JWT_SECRET để trống sẽ tự sinh)
 docker compose up --build -d
 ```
 
@@ -167,7 +167,7 @@ Vào *Nút giao & Cấu hình → Camera*, đổi nguồn sang `RTSP` / `HTTP` /
 |------|----------|---------|
 | `STCS_PORT` | `8010` | Cổng backend |
 | `STCS_DATABASE_URL` | `sqlite:///backend/data/stcs.db` | Chuỗi kết nối CSDL |
-| `STCS_JWT_SECRET` | giá trị dev | **Bắt buộc đổi khi triển khai thật** |
+| `STCS_JWT_SECRET` | *(trống)* | Chuỗi ngẫu nhiên ≥ 32 ký tự. Bỏ trống → tự sinh và lưu ở `STCS_JWT_SECRET_FILE` (mặc định `backend/data/.jwt_secret`). Giá trị yếu/giá trị mẫu → từ chối khởi động |
 | `STCS_JWT_EXPIRE_MINUTES` | `480` | Thời hạn phiên đăng nhập |
 | `STCS_CORS_ORIGINS` | `http://localhost:5173,…` | Origin được phép |
 | `STCS_SEED` | `1` | Seed dữ liệu mẫu khi CSDL trống |
