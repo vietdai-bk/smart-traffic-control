@@ -97,6 +97,13 @@ class Settings:
             if o.strip()
         )
     )
+    # Proxy tin cậy: chỉ khi kết nối đến từ các địa chỉ này mới đọc IP thật trong X-Forwarded-For.
+    # Danh sách IP/CIDR phân tách bằng dấu phẩy. Mặc định chỉ loopback (vd. Vite dev proxy).
+    trusted_proxies: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            p.strip() for p in _env("STCS_TRUSTED_PROXIES", "127.0.0.1,::1").split(",") if p.strip()
+        )
+    )
     # Brute-force protection (NFR08)
     max_failed_logins: int = 5
     lockout_minutes: int = 5

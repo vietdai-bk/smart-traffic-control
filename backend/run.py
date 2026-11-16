@@ -10,4 +10,6 @@ if __name__ == "__main__":
         port=int(os.environ.get("STCS_PORT", "8010")),
         reload=os.environ.get("STCS_RELOAD", "0") == "1",
         log_level="info",
+        # IP client do app.core.deps.client_ip xử lý theo STCS_TRUSTED_PROXIES; tắt xử lý trùng của uvicorn
+        proxy_headers=False,
     )
