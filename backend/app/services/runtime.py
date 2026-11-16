@@ -6,6 +6,7 @@ Mỗi giây: heartbeat thiết bị, fail-safe, thuật toán adaptive, cảnh b
 from __future__ import annotations
 
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -552,6 +553,24 @@ class IntersectionRuntime:
         return issues
 
     # ------------------------------------------------------------------ commands
+    @staticmethod
+    def _num(params: dict, key: str, default: float, kind: type = float) -> float:
+        """Đọc tham số số học của lệnh; giá trị sai kiểu / NaN / vô cực → ValueError (API trả 422)."""
+        raw = params.get(key, default)
+        if isinstance(raw, bool):
+            raise ValueError(f"Tham số {key} phải là số")
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
+            raise ValueError(f"Tham số {key} phải là số") from None
+        if not math.isfinite(val):
+            raise ValueError(f"Tham số {key} phải là số hữu hạn")
+        if kind is int:
+            if val != int(val):
+                raise ValueError(f"Tham số {key} phải là số nguyên")
+            return int(val)
+        return val
+
     def execute(self, command: str, params: dict, username: str) -> tuple[CommandResult, dict | None]:
         if self.adapter.fault or not self.controller_online:
             before = self.fsm.state
@@ -565,16 +584,16 @@ class IntersectionRuntime:
         if command == "NEXT_PHASE":
             res = fsm.next_phase(username)
         elif command == "GOTO_PHASE":
-            res = fsm.goto_phase(int(params.get("phase_id", 1)), username)
+            res = fsm.goto_phase(self._num(params, "phase_id", 1, int), username)
         elif command == "HOLD_PHASE":
-            dur = params.get("duration_s")
-            res = fsm.hold_phase_cmd(int(params.get("phase_id", fsm.phase_id)), float(dur) if dur else None, username)
+            dur = self._num(params, "duration_s", 0) if params.get("duration_s") else None
+            res = fsm.hold_phase_cmd(self._num(params, "phase_id", fsm.phase_id, int), dur, username)
         elif command == "RELEASE_HOLD":
             res = fsm.release_hold(username)
         elif command == "EXTEND_GREEN":
-            res = fsm.extend_green(float(params.get("seconds", 10)), username)
+            res = fsm.extend_green(self._num(params, "seconds", 10), username)
         elif command == "SET_TIMING":
-            res = fsm.set_fixed_timing(float(params.get("green_ns", 30)), float(params.get("green_ew", 30)), username)
+            res = fsm.set_fixed_timing(self._num(params, "green_ns", 30), self._num(params, "green_ew", 30), username)
         elif command == "FLASHING_YELLOW":
             res = fsm.set_flashing(bool(params.get("on", True)), username)
         else:

@@ -77,7 +77,10 @@ def command(iid: int, body: SignalCommandRequest, request: Request, db: Session 
     _require_confirm(body.confirm)
     rt = _runtime(iid)
     params = {**body.params, "reason": body.reason} if body.reason else dict(body.params)
-    res, ack = rt.execute(body.command, params, cur.username)
+    try:
+        res, ack = rt.execute(body.command, params, cur.username)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     label = COMMAND_LABELS.get(body.command, body.command)
     audit(db, "SIGNAL_CONTROL", body.command, f"{rt.cfg.name}: {label} — {res.message}", username=cur.username,
           role=cur.role, target=rt.cfg.code, ip=client_ip(request),

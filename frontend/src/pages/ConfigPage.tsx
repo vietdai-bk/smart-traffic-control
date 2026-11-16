@@ -375,7 +375,7 @@ function CameraTab({ list, reload, selected, setSelected }: { list: Intersection
     setPings((p) => ({ ...p, [c.id]: "Đang kiểm tra…" }));
     try {
       const r = await api.post<{ ok: boolean; status: string; latency_ms: number | null; fps?: number; error: string | null }>(`/cameras/${c.id}/ping`);
-      setPings((p) => ({ ...p, [c.id]: r.ok ? `${r.status} · ${r.latency_ms} ms · ${r.fps} fps` : `OFFLINE · ${r.error}` }));
+      setPings((p) => ({ ...p, [c.id]: r.ok ? `${r.status} · ${r.latency_ms != null ? `${r.latency_ms} ms` : "– ms"} · ${r.fps} fps` : `OFFLINE · ${r.error}` }));
     } catch (e) {
       setPings((p) => ({ ...p, [c.id]: (e as Error).message }));
     }

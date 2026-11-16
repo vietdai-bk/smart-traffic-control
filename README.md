@@ -170,6 +170,7 @@ Vào *Nút giao & Cấu hình → Camera*, đổi nguồn sang `RTSP` / `HTTP` /
 | `STCS_JWT_SECRET` | *(trống)* | Chuỗi ngẫu nhiên ≥ 32 ký tự. Bỏ trống → tự sinh và lưu ở `STCS_JWT_SECRET_FILE` (mặc định `backend/data/.jwt_secret`). Giá trị yếu/giá trị mẫu → từ chối khởi động |
 | `STCS_JWT_EXPIRE_MINUTES` | `480` | Thời hạn phiên đăng nhập |
 | `STCS_TRUSTED_PROXIES` | `127.0.0.1,::1` | IP/CIDR của reverse proxy được tin để đọc `X-Forwarded-For` (IP ghi audit). Docker compose đặt dải mạng nội bộ |
+| `STCS_CAMERA_FILE_DIRS` | `backend/data/videos` | Thư mục được phép dùng làm nguồn camera `FILE` (nhiều thư mục cách nhau bởi `:`). Nguồn RTSP/HTTP không được trỏ tới loopback/link-local (vd. metadata cloud) |
 | `STCS_CORS_ORIGINS` | `http://localhost:5173,…` | Origin được phép |
 | `STCS_SEED` | `1` | Seed dữ liệu mẫu khi CSDL trống |
 | `STCS_RESET_DB` | `0` | `1` = xoá và tạo lại CSDL khi khởi động |

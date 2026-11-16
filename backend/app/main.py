@@ -51,6 +51,8 @@ async def lifespan(_: FastAPI):
     init_db()
     await manager.start()
     await supervisor.start()
+    if settings.llm_unlimited:
+        log.warning("STCS_LLM_UNLIMITED=1: KHÔNG giới hạn độ dài trả lời LLM — chỉ dùng khi kiểm thử")
     audit(None, "SYSTEM", "STARTUP", f"Khởi động {settings.app_name} v{settings.version} "
                                      f"({len(manager.runtimes)} nút giao)")
     try:
@@ -93,7 +95,8 @@ if _dist.exists() and (_dist / "index.html").exists():
     async def spa(full_path: str):
         if full_path.startswith(("api/", "ws/")):
             return JSONResponse(status_code=404, content={"detail": "Không tìm thấy"})
-        candidate = _dist / full_path
-        if full_path and candidate.is_file():
+        candidate = (_dist / full_path).resolve()
+        # Chỉ phục vụ file nằm trong thư mục dist (chặn ../ thoát ra ngoài)
+        if full_path and candidate.is_relative_to(_dist.resolve()) and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(_dist / "index.html")

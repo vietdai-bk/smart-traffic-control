@@ -49,9 +49,14 @@ async def live(ws: WebSocket):
                 msg = json.loads(raw)
             except ValueError:
                 continue
+            if not isinstance(msg, dict):
+                continue
             if msg.get("type") == "subscribe":
                 iid = msg.get("intersection_id")
-                sub.intersection_id = int(iid) if iid is not None else None
+                try:
+                    sub.intersection_id = int(iid) if iid is not None else None
+                except (TypeError, ValueError):
+                    continue  # dữ liệu sai từ client không được làm sập kết nối
                 rt = manager.get(sub.intersection_id) if sub.intersection_id else None
                 if rt and live_ok:
                     await ws.send_text(json.dumps(rt.snapshot_message(), ensure_ascii=False))

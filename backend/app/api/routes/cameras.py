@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -19,6 +18,7 @@ from app.models.intersection import Camera, Intersection
 from app.schemas.intersection import CameraBase, CameraCreate, CameraOut, CameraUpdate
 from app.services.manager import manager
 from app.vision_engine.geometry import CameraCalibration
+from app.vision_engine.source_policy import SourceNotAllowed, validate_source
 from app.vision_engine.stream_manager import opencv_available
 
 router = APIRouter(prefix="/cameras", tags=["Cameras"])
@@ -48,6 +48,13 @@ def capabilities(_: CurrentUser = Depends(require(Perm.CONFIG_VIEW))):
             "sources": ["SIMULATED", "RTSP", "HTTP", "FILE"]}
 
 
+def _check_source(source_type: str, stream_url: str) -> None:
+    try:
+        validate_source(source_type, stream_url)
+    except SourceNotAllowed as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 def _check_intersection(db: Session, iid: int) -> Intersection:
     it = db.get(Intersection, iid)
     if not it:
@@ -59,6 +66,7 @@ def _check_intersection(db: Session, iid: int) -> Intersection:
 def create_camera(body: CameraCreate, request: Request, db: Session = Depends(get_db),
                   cur: CurrentUser = Depends(require(Perm.CONFIG_MANAGE))):
     it = _check_intersection(db, body.intersection_id)
+    _check_source(body.source_type, body.stream_url)
     if db.query(Camera).filter(Camera.code == body.code).first():
         raise HTTPException(409, f"Mã camera '{body.code}' đã tồn tại")
     if db.query(Camera).filter(Camera.intersection_id == it.id, Camera.direction == body.direction).first():
@@ -98,6 +106,8 @@ def update_camera(cid: int, body: CameraUpdate, request: Request, db: Session = 
     except ValidationError as exc:
         msg = "; ".join(e["msg"].replace("Value error, ", "") for e in exc.errors())
         raise HTTPException(422, msg) from exc
+    if "source_type" in patch or "stream_url" in patch:
+        _check_source(validated.source_type, validated.stream_url)
     new_iid = patch.get("intersection_id") or cam.intersection_id
     _check_intersection(db, new_iid)
     changes = {}
@@ -153,13 +163,16 @@ def ping_camera(cid: int, request: Request, db: Session = Depends(get_db),
     if stream is None:
         result = {"ok": False, "status": "OFFLINE", "latency_ms": None, "error": "Camera chưa được nạp vào runtime"}
     elif stream.connected:
-        latency = stream.latency_ms or random.uniform(35, 60)
-        result = {"ok": True, "status": stream.status, "latency_ms": round(latency, 1), "fps": round(stream.fps, 1),
+        latency = stream.latency_ms  # None nếu chưa đo được — không bịa số
+        result = {"ok": True, "status": stream.status,
+                  "latency_ms": round(latency, 1) if latency is not None else None, "fps": round(stream.fps, 1),
                   "resolution": stream.info.resolution, "bitrate_kbps": round(stream.bitrate_kbps), "error": None}
     else:
         result = {"ok": False, "status": "OFFLINE", "latency_ms": None, "error": stream.error or "Không phản hồi"}
     audit(db, "CONFIG", "PING_CAMERA",
-          f"Kiểm tra kết nối camera {cam.code}: {'OK %s ms' % result['latency_ms'] if result['ok'] else result['error']}",
+          f"Kiểm tra kết nối camera {cam.code}: "
+          + ((f"OK {result['latency_ms']} ms" if result["latency_ms"] is not None else "OK")
+             if result["ok"] else result["error"]),
           username=cur.username, role=cur.role, target=cam.code, ip=client_ip(request),
           result="SUCCESS" if result["ok"] else "FAILURE", intersection_id=cam.intersection_id)
     return result
