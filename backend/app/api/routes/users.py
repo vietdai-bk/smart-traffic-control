@@ -73,6 +73,9 @@ def update_user(user_id: int, body: UserUpdate, request: Request, db: Session = 
     if data.get("is_active") is True:
         user.failed_attempts = 0
         user.locked_until = None
+    # Đặt lại mật khẩu, đổi vai trò hoặc khoá tài khoản → đăng xuất mọi phiên hiện có của người đó
+    if "password" in changes or "role" in changes or changes.get("is_active", {}).get("to") is False:
+        user.revoke_tokens()
     db.commit()
     db.refresh(user)
     if "is_active" in changes:

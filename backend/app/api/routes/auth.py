@@ -60,7 +60,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user.locked_until = None
     user.last_login_at = now
     db.commit()
-    token, expires = create_access_token(user.username, user.role)
+    token, expires = create_access_token(user.username, user.role, {"tv": user.token_version})
     audit(db, "AUTH", "LOGIN", f"Đăng nhập thành công ({user.full_name})", username=user.username,
           role=user.role, ip=ip)
     return LoginResponse(access_token=token, expires_in=expires, user=UserOut.model_validate(user),
@@ -75,6 +75,10 @@ def me(current: CurrentUser = Depends(get_current_user), db: Session = Depends(g
 
 @router.post("/logout")
 def logout(request: Request, current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    # JWT không lưu trạng thái: thu hồi bằng cách tăng token_version (đăng xuất mọi phiên của tài khoản)
+    user = db.get(User, current.id)
+    user.revoke_tokens()
+    db.commit()
     audit(db, "AUTH", "LOGOUT", "Đăng xuất", username=current.username, role=current.role, ip=client_ip(request))
     return {"ok": True}
 
@@ -86,6 +90,7 @@ def change_password(body: ChangePassword, request: Request, current: CurrentUser
     if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(400, "Mật khẩu hiện tại không đúng")
     user.password_hash = hash_password(body.new_password)
+    user.revoke_tokens()
     db.commit()
     audit(db, "USER", "CHANGE_PASSWORD", "Đổi mật khẩu cá nhân", username=current.username, role=current.role,
           target=current.username, ip=client_ip(request))

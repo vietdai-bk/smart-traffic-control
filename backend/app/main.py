@@ -24,10 +24,22 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(na
 log = logging.getLogger("stcs")
 
 
+def _migrate(eng) -> None:
+    """Bổ sung cột mới cho CSDL tạo từ phiên bản cũ (create_all không ALTER bảng đã có)."""
+    from sqlalchemy import inspect, text
+
+    cols = {c["name"] for c in inspect(eng).get_columns("users")}
+    if "token_version" not in cols:
+        with eng.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0"))
+        log.info("Đã thêm cột users.token_version")
+
+
 def init_db() -> None:
     if settings.reset_db:
         Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    _migrate(engine)
     if settings.seed_on_startup:
         with SessionLocal() as db:
             seed_if_empty(db)

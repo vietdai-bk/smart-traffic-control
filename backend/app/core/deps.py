@@ -35,6 +35,9 @@ def user_from_token(db: Session, token: str | None) -> User | None:
     user = db.query(User).filter(User.username == payload["sub"]).first()
     if not user or not user.is_active:
         return None
+    # Token cấp trước lần thu hồi gần nhất (đăng xuất, đổi mật khẩu…) không còn hiệu lực
+    if payload.get("tv") != user.token_version:
+        return None
     return user
 
 
