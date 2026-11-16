@@ -110,3 +110,9 @@ Theo yêu cầu mới: thay xác nhận tại chỗ bằng Modal nổi, chỉ g�
 Kế hoạch: chỉ chỉnh CSS của panel danh sách trong ConfigPage. Ở bố cục hai cột (xl), danh sách dùng sticky dưới header với chiều cao giới hạn theo viewport; nội dung danh sách cuộn riêng khi dài. Giữ bố cục cuộn tự nhiên trên mobile và không sửa logic chọn/lưu nút giao.
 
 Đã áp dụng sticky và cuộn độc lập cho danh sách; header danh sách không co lại. TypeScript và build production đạt. Chưa kiểm tra cuộn trực quan trong trình duyệt.
+
+## 2026-11-16 — Ẩn tài khoản mẫu ngoài chế độ demo, cập nhật ghi chú bảo mật đăng nhập
+
+Kế hoạch trước sửa: trang đăng nhập đang công khai tên đăng nhập và mật khẩu của tài khoản mẫu kèm nút đăng nhập nhanh, nguy hiểm khi triển khai thật. Thêm cờ `STCS_DEMO_MODE` ở backend (mặc định bật khi chạy local, tắt trong Docker) và endpoint công khai `GET /api/system/public`; frontend chỉ hiện khối tài khoản mẫu khi backend xác nhận đang demo. Ghi chú "sai 5 lần khoá tài khoản" không còn đúng vì khoá tạm đã chuyển sang theo cặp tài khoản + địa chỉ mạng. Giữ nguyên việc ẩn Viewer.
+
+Kết quả: khối "Đăng nhập nhanh tài khoản mẫu" chỉ hiện khi `STCS_DEMO_MODE=1`; mặc định frontend ẩn cho tới khi backend trả về. Ghi chú bảo mật luôn hiện, nội dung mới: sai mật khẩu 5 lần, tài khoản đó tạm bị chặn đăng nhập 5 phút từ địa chỉ mạng này. TypeScript, build production và test backend đạt; đã kiểm tra trên trình duyệt ở cả hai chế độ.

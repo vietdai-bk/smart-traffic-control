@@ -16,6 +16,12 @@ def health():
     return {"status": "ok", "version": settings.version, **manager.health()}
 
 
+@router.get("/public")
+def public():
+    """Cấu hình công khai cho trang đăng nhập (không cần đăng nhập)."""
+    return {"demo_mode": settings.demo_mode}
+
+
 @router.get("/info")
 def info(_: CurrentUser = Depends(get_current_user)):
     return {

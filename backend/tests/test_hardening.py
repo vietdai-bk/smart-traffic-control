@@ -78,3 +78,8 @@ def test_camera_api_rejects_ssrf(client):
                      json={"source_type": "HTTP", "stream_url": "http://169.254.169.254/"})
     assert r.status_code == 422
 
+
+
+def test_public_config_needs_no_login(client):
+    r = client.get("/api/system/public")
+    assert r.status_code == 200 and set(r.json()) == {"demo_mode"}

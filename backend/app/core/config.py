@@ -140,6 +140,9 @@ class Settings:
     llm_min_gap_s: float = 20.0          # không gọi LLM dày hơn mức này kể cả khi có sự kiện
     llm_pending_ttl_s: float = 120.0     # đề xuất chế độ Tư vấn hết hạn nếu không được duyệt
 
+    # Chế độ demo: trang đăng nhập hiện tài khoản mẫu + mật khẩu và nút đăng nhập nhanh.
+    # Tắt khi triển khai thật (docker-compose mặc định tắt).
+    demo_mode: bool = field(default_factory=lambda: _env("STCS_DEMO_MODE", "1") == "1")
     seed_on_startup: bool = field(default_factory=lambda: _env("STCS_SEED", "1") == "1")
     reset_db: bool = field(default_factory=lambda: _env("STCS_RESET_DB", "0") == "1")
     frontend_dist: Path = field(default_factory=lambda: Path(_env("STCS_FRONTEND_DIST", str(BASE_DIR.parent / "frontend" / "dist"))))

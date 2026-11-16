@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { ApiError } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { ROLE_COLOR } from "@/lib/permissions";
 
 const DEMO = [
@@ -64,6 +64,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Mặc định ẩn tài khoản mẫu; chỉ hiện khi backend xác nhận đang ở chế độ demo
+  const [demoMode, setDemoMode] = useState(false);
+  useEffect(() => {
+    api.get<{ demo_mode: boolean }>("/system/public").then((r) => setDemoMode(r.demo_mode)).catch(() => undefined);
+  }, []);
 
   if (ready && user) return <Navigate to={(loc.state as { from?: string } | null)?.from ?? "/"} replace />;
 
@@ -214,7 +219,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Tài khoản mẫu tiện dụng */}
+          {/* Tài khoản mẫu — chỉ hiện khi backend bật chế độ demo (STCS_DEMO_MODE=1) */}
+          {demoMode && (
           <div className="mt-8 border-t border-line/60 pt-6">
             <p className="text-2xs font-bold uppercase tracking-wider text-ink-mute">Đăng nhập nhanh tài khoản mẫu</p>
             <div className="mt-2.5 space-y-2">
@@ -239,10 +245,11 @@ export default function LoginPage() {
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-2xs text-ink-mute">
-              Bảo mật: Sai mật khẩu 5 lần liên tiếp sẽ tạm khóa tài khoản 5 phút để bảo vệ hệ thống.
-            </p>
           </div>
+          )}
+          <p className="mt-6 text-2xs text-ink-mute">
+            Bảo mật: sai mật khẩu 5 lần liên tiếp, tài khoản đó sẽ tạm bị chặn đăng nhập 5 phút từ địa chỉ mạng này.
+          </p>
         </div>
       </section>
     </div>
