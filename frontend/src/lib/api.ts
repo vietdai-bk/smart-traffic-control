@@ -69,6 +69,12 @@ export const api = {
   del: <T>(path: string) => request<T>("DELETE", path),
 };
 
+/** Vé dùng một lần (hạn ~30 s) để mở WebSocket / luồng MJPEG — không đặt JWT lên URL. */
+export async function getTicket(purpose: "ws" | "stream", cameraId?: number): Promise<string> {
+  const r = await api.post<{ ticket: string }>("/auth/ticket", { purpose, camera_id: cameraId ?? null });
+  return r.ticket;
+}
+
 export function qs(params: Record<string, string | number | boolean | null | undefined>): string {
   const p = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {

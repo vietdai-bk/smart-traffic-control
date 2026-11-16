@@ -44,6 +44,17 @@ def user_from_token(db: Session, token: str | None) -> User | None:
     return user
 
 
+def user_from_ticket(db: Session, ticket: str | None, purpose: str) -> User | None:
+    """Xác thực bằng vé dùng một lần (WebSocket / MJPEG) — xem app.core.tickets."""
+    from app.core.tickets import tickets
+
+    uid = tickets.consume(ticket, purpose)
+    if uid is None:
+        return None
+    user = db.get(User, uid)
+    return user if user and user.is_active else None
+
+
 def get_current_user(
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),

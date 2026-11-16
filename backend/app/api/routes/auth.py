@@ -10,12 +10,21 @@ from app.core.audit import audit
 from app.core.config import settings
 from app.core.deps import CurrentUser, client_ip, get_current_user
 from app.core.login_guard import login_guard
-from app.core.rbac import perms_of
+from app.core.rbac import Perm, has_perm, perms_of
 from app.core.security import create_access_token, hash_password, verify_password
+from app.core.tickets import TICKET_TTL_S, stream_purpose, tickets, ws_purpose
 from app.db.session import get_db
 from app.models.base import utcnow
 from app.models.user import User
-from app.schemas.user import ChangePassword, LoginRequest, LoginResponse, MeResponse, UserOut
+from app.schemas.user import (
+    ChangePassword,
+    LoginRequest,
+    LoginResponse,
+    MeResponse,
+    TicketRequest,
+    TicketResponse,
+    UserOut,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -83,6 +92,20 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
 def me(current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.get(User, current.id)
     return MeResponse(user=UserOut.model_validate(user), permissions=perms_of(user.role))
+
+
+@router.post("/ticket", response_model=TicketResponse)
+def ticket(body: TicketRequest, current: CurrentUser = Depends(get_current_user)):
+    """Cấp vé dùng một lần (hạn ngắn) để mở WebSocket / luồng MJPEG mà không đặt JWT lên URL."""
+    if body.purpose == "stream":
+        if body.camera_id is None:
+            raise HTTPException(422, "Thiếu camera_id cho vé luồng camera")
+        if not has_perm(current.role, Perm.LIVE_VIEW):
+            raise HTTPException(403, "Không có quyền xem luồng camera")
+        purpose = stream_purpose(body.camera_id)
+    else:
+        purpose = ws_purpose()
+    return TicketResponse(ticket=tickets.issue(current.id, purpose), expires_in=int(TICKET_TTL_S))
 
 
 @router.post("/logout")

@@ -13,7 +13,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.events import bus
 from app.core.rbac import Perm, has_perm
-from app.core.deps import user_from_token
+from app.core.deps import user_from_ticket
+from app.core.tickets import ws_purpose
 from app.db.session import SessionLocal
 from app.services.manager import manager
 
@@ -23,10 +24,11 @@ router = APIRouter()
 
 @router.websocket("/ws/live")
 async def live(ws: WebSocket):
-    token = ws.query_params.get("token")
+    # Vé lấy từ POST /api/auth/ticket — không đặt JWT trên URL (bị ghi vào access log)
+    ticket = ws.query_params.get("ticket")
     db = SessionLocal()
     try:
-        user = user_from_token(db, token)
+        user = user_from_ticket(db, ticket, ws_purpose())
         identity = (user.username, user.role) if user else None
     finally:
         db.close()

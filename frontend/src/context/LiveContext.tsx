@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api } from "@/lib/api";
+import { api, getTicket } from "@/lib/api";
 import type { Alert, FramesMessage, Incident, IntersectionSummary, Snapshot } from "@/lib/types";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
@@ -127,11 +127,23 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     let pingTimer: number | undefined;
     let reconnectTimer: number | undefined;
 
-    const connect = () => {
+    const connect = async () => {
       if (stopped) return;
       setStatus("connecting");
+      let ticket: string;
+      try {
+        ticket = await getTicket("ws");
+      } catch {
+        // Lỗi mạng / máy chủ: thử lại như khi WebSocket rớt (401 đã được api.ts xử lý → đăng xuất)
+        if (stopped) return;
+        setStatus("closed");
+        retry += 1;
+        reconnectTimer = window.setTimeout(connect, Math.min(1000 * 2 ** Math.min(retry, 4), 15000));
+        return;
+      }
+      if (stopped) return;
       const proto = location.protocol === "https:" ? "wss" : "ws";
-      const ws = new WebSocket(`${proto}://${location.host}/ws/live?token=${encodeURIComponent(token)}`);
+      const ws = new WebSocket(`${proto}://${location.host}/ws/live?ticket=${encodeURIComponent(ticket)}`);
       wsRef.current = ws;
       ws.onopen = () => {
         retry = 0;

@@ -11,7 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
-from app.core.deps import CurrentUser, client_ip, require, user_from_token
+from app.core.deps import CurrentUser, client_ip, require, user_from_ticket
+from app.core.tickets import stream_purpose
 from app.core.rbac import Perm, has_perm
 from app.db.session import SessionLocal, get_db
 from app.models.intersection import Camera, Intersection
@@ -165,11 +166,14 @@ def ping_camera(cid: int, request: Request, db: Session = Depends(get_db),
 
 
 @router.get("/{cid}/stream.mjpg")
-async def mjpeg(cid: int, token: str = Query(...)):
-    """Luồng MJPEG đã chú thích AI cho camera thực (RTSP/HTTP/FILE). Xác thực qua ?token= vì thẻ <img>."""
+async def mjpeg(cid: int, ticket: str = Query(...)):
+    """Luồng MJPEG đã chú thích AI cho camera thực (RTSP/HTTP/FILE).
+
+    Thẻ <img> không gửi được header nên xác thực bằng ?ticket= (vé dùng một lần từ POST /api/auth/ticket).
+    """
     db = SessionLocal()
     try:
-        user = user_from_token(db, token)
+        user = user_from_ticket(db, ticket, stream_purpose(cid))
         cam = db.get(Camera, cid)
     finally:
         db.close()

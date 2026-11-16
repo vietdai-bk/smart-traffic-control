@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { Maximize2, Minimize2, RefreshCw, VideoOff } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLive } from "@/context/LiveContext";
-import { tokenStore } from "@/lib/api";
+import { getTicket } from "@/lib/api";
 import { CAM_STATUS_COLOR, DIR_LABEL, HEAD_COLOR, LEVEL_COLOR } from "@/lib/format";
 import type { Direction, DirectionMetrics, FrameObject, FrameTrack, FramesMessage, HeadColor } from "@/lib/types";
 import { Badge, Dot } from "../ui/primitives";
@@ -150,6 +150,39 @@ export function CameraFeed({
   const sig = metrics ? signal : "OFF";
   const inRoi = metrics ? Object.values(metrics.in_roi).reduce((a, b) => a + b, 0) : 0;
   const off = status === "OFFLINE";
+  const camId = cam?.id;
+  const wantStream = Boolean(isReal && camId != null && !off);
+
+  // Luồng MJPEG: xin vé dùng một lần rồi mới gắn src (không đặt JWT lên URL). Vé chỉ dùng được một lần,
+  // nên khi <img> lỗi/rớt kết nối thì xin vé mới (streamReload) với độ trễ tăng dần (streamFails).
+  const [streamSrc, setStreamSrc] = useState<string | null>(null);
+  const [streamReload, setStreamReload] = useState(0);
+  const streamFails = useRef(0);
+  const retryStream = () => {
+    streamFails.current += 1;
+    setStreamReload((n) => n + 1);
+  };
+  useEffect(() => {
+    setStreamSrc(null);
+    if (!wantStream || camId == null) return;
+    let cancelled = false;
+    const fails = streamFails.current;
+    const delay = fails === 0 ? 0 : Math.min(1000 * 2 ** Math.min(fails, 4), 15000);
+    const timer = window.setTimeout(() => {
+      getTicket("stream", camId)
+        .then((t) => {
+          if (!cancelled) setStreamSrc(`/api/cameras/${camId}/stream.mjpg?ticket=${encodeURIComponent(t)}`);
+        })
+        .catch(() => {
+          if (!cancelled) retryStream();
+        });
+    }, delay);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantStream, camId, streamReload]);
 
   return (
     <div
@@ -189,8 +222,10 @@ export function CameraFeed({
       {/* Khung hình Video / Canvas */}
       <div ref={wrapRef} className="relative aspect-video w-full bg-slate-950/20">
         {isReal && cam && !off ? (
-          <img
-            src={`/api/cameras/${cam.id}/stream.mjpg?token=${encodeURIComponent(tokenStore.get() ?? "")}`}
+          streamSrc && <img
+            src={streamSrc}
+            onLoad={() => (streamFails.current = 0)}
+            onError={retryStream}
             alt={`Camera ${cam.code}`}
             className="absolute inset-0 h-full w-full object-cover"
           />

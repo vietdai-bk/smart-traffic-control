@@ -68,6 +68,16 @@ class UserUpdate(BaseModel):
         return v or None
 
 
+class TicketRequest(BaseModel):
+    purpose: Literal["ws", "stream"]
+    camera_id: int | None = None
+
+
+class TicketResponse(BaseModel):
+    ticket: str
+    expires_in: int
+
+
 class ChangePassword(BaseModel):
     current_password: str
     new_password: str = Field(min_length=6, max_length=128)
